@@ -1,3 +1,4 @@
+import { ContactForm } from "@/components/contact-form";
 import { StandardPage } from "@/components/public-content";
 import { contactPage, createPageMetadata } from "@/data/site-content";
 
@@ -8,6 +9,8 @@ export default function ContactPage() {
     <StandardPage
       actions={[{ href: "/faq", label: "Browse FAQs", variant: "secondary" }]}
       content={contactPage}
-    />
+    >
+      <ContactForm />
+    </StandardPage>
   );
 }

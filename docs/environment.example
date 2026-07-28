@@ -1,0 +1,32 @@
+# Copy this template to an untracked .env.local file before configuring a local
+# environment. Do not place real credentials in this repository.
+#
+# Local development: use a disposable Supabase project and keep all optional
+# integrations disabled. Preview: use isolated, non-production data and never
+# allow the production Auth redirect list. Production: set the canonical HTTPS
+# site URL, use deployment-secret storage for server-only values, and complete
+# the release controls documented in README.md and docs/DEPLOYMENT.md.
+
+# Public Supabase configuration (safe to expose to the browser).
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+# Set to true only after Supabase Auth email settings, redirect URLs, SMTP,
+# templates, and approved account/email operations have been reviewed. Until
+# then, configure Supabase Auth itself as invite-only or disable public sign-up
+# and email delivery; this client-side flag cannot disable Auth REST endpoints.
+NEXT_PUBLIC_AUTH_ACTIONS_ENABLED=false
+
+# Server-only. Never prefix this with NEXT_PUBLIC_ and never commit its value.
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Application URL used for redirects, canonical links, and cookie-safe callbacks.
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# Optional production integrations. Leave blank until official credentials exist.
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+TURNSTILE_SECRET_KEY=
+BREVO_API_KEY=
+SENTRY_DSN=
+NEXT_PUBLIC_SENTRY_DSN=
+PAYSTACK_SECRET_KEY=
+NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=

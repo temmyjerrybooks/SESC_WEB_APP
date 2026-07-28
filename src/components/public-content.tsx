@@ -20,15 +20,16 @@ interface PageHeroProps {
   readonly content: Pick<PageContent, "eyebrow" | "title" | "summary" | "notice">;
   readonly actions?: readonly PublicAction[];
   readonly children?: ReactNode;
+  readonly summaryContent?: ReactNode;
 }
 
-export function PageHero({ content, actions, children }: PageHeroProps) {
+export function PageHero({ content, actions, children, summaryContent }: PageHeroProps) {
   return (
     <header className="page-hero">
       <div className="page-shell page-hero__content">
         <p className="page-eyebrow">{content.eyebrow}</p>
         <h1 className="page-title">{content.title}</h1>
-        <p className="page-summary">{content.summary}</p>
+        <p className="page-summary">{summaryContent ?? content.summary}</p>
         {actions?.length ? <ActionLinks actions={actions} /> : null}
         {children}
       </div>
@@ -100,6 +101,7 @@ interface ContentCardProps {
   readonly href?: string;
   readonly linkLabel?: string;
   readonly visualLabel?: string;
+  readonly additionalAction?: ReactNode;
 }
 
 export function ContentCard({
@@ -110,6 +112,7 @@ export function ContentCard({
   href,
   linkLabel = "Explore",
   visualLabel,
+  additionalAction,
 }: ContentCardProps) {
   return (
     <article className="card">
@@ -125,10 +128,15 @@ export function ContentCard({
         </div>
         <h3 className="card__title">{title}</h3>
         <p className="card__summary">{summary}</p>
-        {href ? (
-          <Link className="card__link" href={href}>
-            {linkLabel}
-          </Link>
+        {href || additionalAction ? (
+          <div className="card__actions">
+            {href ? (
+              <Link className="card__link" href={href}>
+                {linkLabel}
+              </Link>
+            ) : null}
+            {additionalAction}
+          </div>
         ) : null}
       </div>
     </article>
@@ -190,12 +198,21 @@ interface DetailPageProps {
   readonly backHref: string;
   readonly backLabel: string;
   readonly children?: ReactNode;
+  readonly heroSummaryContent?: ReactNode;
+  readonly asideChildren?: ReactNode;
 }
 
-export function DetailPage({ entry, backHref, backLabel, children }: DetailPageProps) {
+export function DetailPage({
+  entry,
+  backHref,
+  backLabel,
+  children,
+  heroSummaryContent,
+  asideChildren,
+}: DetailPageProps) {
   return (
-    <main>
-      <PageHero content={entry} />
+    <div>
+      <PageHero content={entry} summaryContent={heroSummaryContent} />
       <section className="section">
         <div className="page-shell detail-layout">
           <div className="detail-layout__main">
@@ -212,10 +229,11 @@ export function DetailPage({ entry, backHref, backLabel, children }: DetailPageP
           </div>
           <aside className="detail-layout__aside" aria-label="Content details">
             <FactsGrid facts={entry.facts} />
+            {asideChildren}
           </aside>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -227,7 +245,7 @@ interface StandardPageProps {
 
 export function StandardPage({ content, actions, children }: StandardPageProps) {
   return (
-    <main>
+    <div>
       <PageHero actions={actions} content={content} />
       <section className="section">
         <div className="page-shell article-layout">
@@ -240,7 +258,7 @@ export function StandardPage({ content, actions, children }: StandardPageProps) 
           {children}
         </div>
       </section>
-    </main>
+    </div>
   );
 }
 
@@ -266,7 +284,7 @@ export function DirectoryPage({
   actions,
 }: DirectoryPageProps) {
   return (
-    <main>
+    <div>
       <PageHero actions={actions} content={content} />
       <section className="section">
         <div className="page-shell">
@@ -287,7 +305,7 @@ export function DirectoryPage({
           />
         </div>
       </section>
-    </main>
+    </div>
   );
 }
 

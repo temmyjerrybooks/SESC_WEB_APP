@@ -1,0 +1,27 @@
+# dependencies and build output
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+
+# environment and deployment secrets
+.env*
+.dev.vars
+
+# local tooling
+.DS_Store
+*.log
+*.tsbuildinfo
+.vercel/
+.wrangler/
+
+# Local-only design exports may contain unverified names or portraits and are
+# intentionally excluded from version control.
+stitch_sesc_digital_home_the_eagles_voice/
+
+# Supabase local state and sensitive exports
+supabase/.temp/
+supabase/.branches/
+*.sql.gz
