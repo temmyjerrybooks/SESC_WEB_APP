@@ -3,9 +3,14 @@ import { expect, test, type Locator } from "@playwright/test";
 import { siteConfig } from "../src/config/site";
 
 const topsborgUrl = siteConfig.partners.topsborg.url;
+const productionServerRun =
+  Boolean(process.env.PLAYWRIGHT_BASE_URL) ||
+  process.env.PLAYWRIGHT_PRODUCTION === "true";
 
 const responsiveViewports = [
+  { name: "small mobile", width: 320, height: 568 },
   { name: "mobile", width: 390, height: 844 },
+  { name: "large mobile", width: 430, height: 932 },
   { name: "tablet portrait", width: 768, height: 1024 },
   { name: "tablet landscape", width: 1024, height: 768 },
   { name: "desktop", width: 1440, height: 900 },
@@ -42,8 +47,10 @@ test("publishes the approved TOPSBORG website across public and authentication p
   await expect(partnerCard.locator('a[href="/partners/topsborg-technologies"]')).toBeVisible();
   await expect(page.locator("a a")).toHaveCount(0);
 
-  await partnerCard.locator('a[href="/partners/topsborg-technologies"]').click();
-  await expect(page).toHaveURL(/\/partners\/topsborg-technologies$/);
+  await Promise.all([
+    page.waitForURL(/\/partners\/topsborg-technologies$/, { timeout: 30_000 }),
+    partnerCard.locator('a[href="/partners/topsborg-technologies"]').click(),
+  ]);
   const detailCta = page.locator(
     '[aria-labelledby="topsborg-partnership-purpose"] a.button[href="' +
       topsborgUrl +
@@ -53,8 +60,10 @@ test("publishes the approved TOPSBORG website across public and authentication p
   await expectVerifiedTopsborgLink(detailCta);
   await expect(page.locator("a a")).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Back to partners" }).click();
-  await expect(page).toHaveURL(/\/partners$/);
+  await Promise.all([
+    page.waitForURL(/\/partners$/, { timeout: 30_000 }),
+    page.getByRole("link", { name: "Back to partners" }).click(),
+  ]);
 
   await page.goto("/sponsors", { waitUntil: "domcontentloaded" });
   const sponsorCard = page
@@ -75,7 +84,7 @@ test("publishes the approved TOPSBORG website across public and authentication p
 
 test("shows the technology credit in each development portal preview", async ({ page }) => {
   test.skip(
-    Boolean(process.env.PLAYWRIGHT_BASE_URL),
+    productionServerRun,
     "Production intentionally keeps portal previews unavailable.",
   );
 
@@ -88,6 +97,7 @@ test("shows the technology credit in each development portal preview", async ({ 
 });
 
 test("keeps TOPSBORG placements responsive and free of hydration failures", async ({ page }) => {
+  test.setTimeout(360_000);
   const runtimeErrors: string[] = [];
   const hydrationMessages: string[] = [];
 
