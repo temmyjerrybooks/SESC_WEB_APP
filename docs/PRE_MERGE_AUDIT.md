@@ -1,92 +1,178 @@
 # Pre-merge audit: PR #1
 
-**Audit date:** 28 July 2026
+**Audit date:** 29 July 2026
 **Pull request:** #1, feat/full-platform-implementation into main
 **Decision:** **DO NOT MERGE**
 
-## Executive summary
+## Executive decision
 
-The approved SESC application tree has been rebuilt onto origin/main with a clean feature history. The prior feature-only history included removed, unapproved design-export material that was absent from the approved tip but still reachable through the pull request. This remediation preserves the approved implementation tree exactly while replacing those feature commits with one reviewed implementation commit.
+The clean-history remediation remains the approved foundation for this pull
+request. The current implementation adds production-readiness foundations:
+GitHub Actions CI, Dependabot configuration, typed fail-closed environment
+gates, forward Supabase migrations, static schema checks, server-side portal
+checks, private-upload validation, workflow state helpers, and email adapter
+foundations.
 
-The active pull request must remain unmerged while external Supabase, Auth, deployment, workflow, dependency, and CI controls are completed and independently reviewed. No credential exposure was found, so credential rotation is not indicated by this audit.
+Those changes are not yet sufficient to certify a production release. This
+audit has no evidence that the migration chain was applied to a disposable or
+staging Supabase project, that RLS was exercised with multiple identities, or
+that any external provider configuration was safely validated. Public
+collection routes remain intentionally unavailable. PR #1 must remain open
+and unmerged.
 
-## Clean-history remediation
+## Clean-history status
 
-### Reason and recovery
+The earlier approved remediation replaced the active feature ancestry with two
+clean commits above main:
 
-- Reason: remove feature-only historical privacy and unverified-content exposure from the active pull-request ancestry without changing the approved application state.
-- Previous feature tip: ed8f4cf0d92f42602cb92e607b105f5ce37cc12e.
 - Main baseline: eced6e1b435630567cf4c6b3b49dc0a77d4a5a30.
-- Local-only recovery artifacts were created before reconstruction: backup/full-platform-before-history-cleanup, pre-history-cleanup-ed8f4cf, and an external Git bundle. They must not be pushed.
-- New clean implementation commit: c7abd3fe765e91903f6f9f8ee4a5201d5adec0d1.
-- The implementation commit uses the authenticated repository owner’s GitHub noreply identity rather than a personal email address.
+- Clean implementation: c7abd3fe765e91903f6f9f8ee4a5201d5adec0d1.
+- Clean-history audit: e00695516c140909f2192a10e6ac5754c0ae44b8.
 
-### Reconstruction and tree equivalence
+The historical privacy/design-export material was removed from the active pull
+request ancestry. Local recovery refs and the external recovery bundle remain
+outside the active branch and must not be pushed. This audit did not rewrite
+history, force-push, merge the pull request, or query credentials.
 
-The clean branch was created directly from origin/main in an isolated worktree. Git read-tree transplanted the approved final tree into the new branch index, preserving paths, blobs, executable modes, additions, modifications, deletions, renames, and binary content without replaying earlier feature commits.
+## Verified implementation evidence
 
-- Approved feature tree: 93edc86cc0d9704f7fe9b3e329bca5719468cca9.
-- New implementation tree: 93edc86cc0d9704f7fe9b3e329bca5719468cca9.
-- Result: exact tree-hash equality; 101 changed paths relative to origin/main; no untracked or generated file entered the index.
-- Parent check: the new implementation commit has origin/main as its direct parent.
-- Ancestry check: the previous feature tip is not reachable from the clean branch.
+| Area | Verified local evidence | What the evidence does not prove |
+| --- | --- | --- |
+| Continuous integration | .github/workflows/ci.yml defines read-only, concurrency-controlled Security & hygiene, Static quality, and Browser tests jobs for PRs, main, the feature branch, and manual dispatch. The browser job uses a production build and Chromium; reports upload only on failure. | No GitHub Actions run has completed for these uncommitted changes, and branch protection has not been verified. |
+| Dependency monitoring | .github/dependabot.yml schedules weekly npm and GitHub Actions checks with conservative open-PR limits and no automatic merge setting. | Dependabot has not yet created or validated an update PR. |
+| Environment and feature gates | Typed public/server validation and server-only gates exist for authentication, membership applications, private documents, manual payments, newsletters, email delivery, and each portal. A gate defaults unavailable and requires preview-safe mode to be explicitly disabled, its server-only enablement setting, and its relevant prerequisites. Health returns only availability states and sets no-store caching. | Environment flags are attestations, not evidence that a database, bucket, RLS policy, provider, or server workflow is live and safe. |
+| Authentication and portals | Auth UI requires both a browser-safe approval flag and the server-side authentication gate. Server portal checks use the appropriate portal gate, a Supabase session, account status, and database role/membership data. Safe return-path and authorization helper tests are present. | Registration, verification, sign-in/out, refresh, reset, suspension, invitation acceptance, and role access have not been validated against Supabase. |
+| Supabase schema and RLS foundations | Six forward SQL migrations are present. The static verifier passed on 29 July 2026 and checked the migration chain, required tables, RLS-enablement statements, browser write-lock text, private-storage restrictions, finance queue minimisation, and invitation/notification foundations. | Static SQL inspection does not execute SQL, apply migrations, validate PostgreSQL privileges, or prove live RLS behavior. |
+| Private storage | The source contains MIME, extension, size, magic-byte, opaque-path, and UUID checks. Migration text creates private bucket foundations and denies raw browser object access. | No real bucket, signed URL, upload, replacement, deletion, or cross-user access test has run. |
+| Membership and payments | Application/payment state helpers and database foundations exist. Membership application, contact, and newsletter POST handlers still return 503 before reading a body. | No trusted server operation creates drafts, writes personal data, uploads files, approves applications, verifies payments, or activates memberships. |
+| Email and newsletter | Transactional templates and a Brevo adapter foundation have unit tests. The newsletter endpoint remains unavailable and the gate requires email, Turnstile, abuse-prevention, Supabase, migration, RLS, and service-role prerequisites. | No Brevo credential, sender-domain, provider response, consent record, unsubscribe, rate-limit, or Turnstile verification has run. |
+| Partnership regression | TOPSBORG configuration and external-link tests remain in the suite, and the final production browser run passed all executable TOPSBORG assertions. | This does not validate the partner's external website or any unapproved assets. |
 
-### Current-tree and reachable-history scan
+## Validation performed for this audit
 
-A count-only scan was run without printing sensitive values.
+The following commands were run locally on 29 July 2026:
 
-| Scope | Result |
+| Command | Result |
 | --- | --- |
-| origin/main reachable history | One commit, 29 unique paths, no blocked export, asset, dotenv, generated-output, private-key, bundle, credential, or payment-signature finding. |
-| Clean branch before this audit update | Two reachable commits, 124 unique paths, zero blocked-path categories and zero high-confidence credential or payment signatures. |
-| Production client bundles | No high-confidence secret signature found. |
+| node scripts/verify-supabase-schema.mjs | Passed: 6 migration files checked by the static verifier. |
+| node scripts/check-repository-hygiene.mjs | Passed for the then-tracked 124 paths: zero dotenv, key, node_modules, build, bundle, debug, design-export, or high-confidence credential-pattern findings. |
+| node scripts/check-repository-hygiene.mjs (complete staged tree) | Passed for 167 paths: zero dotenv, key, node_modules, build, bundle, debug, design-export, or high-confidence credential-pattern findings. |
+| npm audit --offline --json | Returned zero cached advisories. This is not authoritative. |
+| npm audit --offline --json --omit=dev | Returned zero cached production advisories. This is not authoritative. |
+| npm ci --no-audit --prefer-offline and npm ls --depth=0 --offline --json | Passed from the workspace lockfile; integrity verification found 29 top-level package entries. |
+| npm run typecheck | Passed (exit 0). |
+| npm run lint | Passed (exit 0). |
+| npm test | Passed: 15 files and 40 tests. |
+| npm run build | Passed: Next.js production build generated 57 routes. |
+| Production Playwright against an externally owned built server | Passed: 10 tests, 1 intentional development-preview skip. |
+| Browser-bundle sensitive-pattern scan | Passed: zero matching files in .next/static for high-confidence credential values or server-only environment names. |
 
-The scan distinguishes inherited main history from the remediated feature history. No inherited origin/main blocker was found. Local recovery refs intentionally retain the former objects for recovery and are excluded from clean-branch reachability results.
+The hygiene command uses Git tracked paths. The complete staged tree was
+scanned after every final source, migration, workflow, and documentation file
+was present, which is the exact file set committed by this audit. CI must rerun
+the same check after push. The expanded implementation itself has now passed a
+clean locked installation, typecheck, lint, unit suite, production build,
+production browser suite, and browser-bundle scan.
 
-### Verification commands and results
+On this Windows workstation, Playwright's managed webServer teardown did not
+exit after every assertion completed. The same production build was therefore
+validated with PLAYWRIGHT_BASE_URL against a manually owned local server, which
+exited cleanly with the result recorded above. This is a local test-harness
+lifecycle observation to verify in remote CI, not an assertion failure.
 
-- npm ci completed from package-lock.json: 479 packages installed in the isolated worktree.
-- npm run typecheck passed.
-- npm run lint passed.
-- npm test passed: 3 files and 5 tests.
-- npm run build passed and generated the production route set.
-- Playwright against the local production build passed: 6 tests passed and 1 production-only portal-preview test was intentionally skipped.
-- The targeted development portal-credit test passed for member, executive, and administrator previews.
-- Responsive, hydration, and horizontal-overflow checks passed at 390x844, 768x1024, 1024x768, and 1440x900.
-- Production portal requests redirected to the configuration-maintenance gate. Synthetic membership and newsletter submissions both returned 503 before accepting data.
-- TOPSBORG links were verified at https://topsborgtech.com with target=_blank and rel=sponsored noopener noreferrer.
+## Dependency-audit status
 
-### Main protection and host retention
+The earlier clean installation reported 12 high-severity advisories, but its
+JSON report was not retained. The affected packages, paths, vulnerable ranges,
+patched versions, production reachability, and remediation options therefore
+cannot be reconstructed safely from the aggregate count.
 
-Main was not rewritten, force-pushed, or otherwise modified. The original feature branch may be replaced only with a SHA-bound force-with-lease after the temporary remote branch and final audit checks pass.
+An online npm audit is unavailable in this environment because it would send
+lockfile-derived dependency metadata to the npm service. The zero-result
+offline audit only reflects cached advisory metadata; it does not resolve or
+contradict the earlier 12-high finding. No forced audit fix, dependency
+override, or speculative package upgrade was applied.
 
-A force-push removes prior feature commits from the active branch ancestry, but it does not prove immediate deletion of inaccessible GitHub backend objects, cached commit URLs, or pull-request event references. If complete host-side erasure is required, contact GitHub Support or consider repository recreation. No credential rotation is required from this audit.
+**Dependency status: unresolved merge blocker pending a reviewed online audit
+for all dependencies and a production-only analysis.**
 
-## Current application safeguards
+## Live Supabase and RLS validation: not run
 
-- Public routes, responsive layouts, and TOPSBORG partnership placements are present in the approved application tree.
-- The official TOPSBORG destination is centrally maintained in src/config/site.ts. Public external links use semantic anchors, a visible focus treatment, target=_blank, and rel=sponsored noopener noreferrer.
-- Production requests to /member, /executive, and /admin redirect to /maintenance?reason=configuration when Supabase configuration is unavailable.
-- Membership, contact, and newsletter preview endpoints fail closed before collecting production data. The current audit confirmed 503 responses for synthetic membership and newsletter requests.
-- Supabase client/server separation, RLS migrations, and role checks remain code-level foundations until a disposable staging project validates them.
+No local Supabase/PostgreSQL runtime or disposable remote project was available
+for this audit. The following evidence is explicitly absent:
 
-## Remaining limitations and merge blockers
+1. Migration application, rollback planning, and schema inspection in a
+   disposable database.
+2. Cross-user and cross-chapter RLS tests, including denied reads and writes.
+3. Applicant, member, executive, finance, national, administrator, suspended,
+   and unauthenticated access tests.
+4. Private Storage upload, signed-URL, expiry, replacement, deletion, and
+   unrelated-user denial tests.
+5. Supabase Auth redirect, email, session refresh, recovery, suspension, and
+   invitation-flow tests.
 
-1. **Blocker - external Supabase validation is incomplete.** Migrations, RLS, Storage policies, role queries, and redirect settings have not been applied and tested against a disposable staging project.
-2. **Blocker - Auth provider controls are external.** The code gates UI actions, but the Supabase project must be configured invite-only or with signup and email delivery disabled until approved controls are in place.
-3. **Release limitation - protected workflows remain intentionally unavailable.** Membership, contact, newsletter, payment, upload, verification, and operational mutation workflows require reviewed server-side implementations before activation.
-4. **Release limitation - no remote CI gate.** No GitHub Actions workflow or protected-branch check currently enforces the successful local verification suite.
-5. **Dependency limitation.** The clean npm ci audit reported 12 high-severity dependency advisories. Review and remediate them before release.
-6. **Content limitation.** Official legal text, contacts, crest/logo assets, social destinations, and other operational inputs still require authorised confirmation before public launch.
+Do not set SESC_DATABASE_MIGRATIONS_READY,
+SESC_ROW_LEVEL_SECURITY_READY, or SESC_PRIVATE_STORAGE_READY to true until
+this evidence exists in a non-production environment. Do not enable any
+SESC_*_ENABLED gate in production while the associated server operation remains
+unimplemented or unverified.
 
-## Recommended next implementation phase
+## Current safeguards
 
-1. Push and review the temporary clean-history branch, then replace the feature branch only with the documented SHA-bound force-with-lease and re-check the pull request.
-2. Create a disposable Supabase staging project; apply and test the migration chain, RLS, Storage, role, and redirect scenarios with separate non-production identities.
-3. Configure Auth and delivery providers under approved policies, then enable reviewed server-side workflows one at a time with integration and abuse-prevention coverage.
-4. Add GitHub CI, branch protection, dependency scanning, and organisation-approved history-aware secret scanning.
-5. Obtain product, security, and operational approval for a new pre-merge audit after the external blockers are resolved.
+- Public pages remain available without requiring Supabase configuration.
+- Default configuration is preview-safe and every sensitive feature gate is
+  unavailable.
+- Production portal requests fail closed when their server-side gate is
+  unavailable; development previews contain no private data.
+- Membership applications, contact delivery, and newsletter subscriptions
+  return 503 before accepting a request body.
+- The service-role key is server-only; health readiness never returns keys,
+  URLs, database details, recipients, or gate diagnostics.
+- CI contains no production Supabase, Brevo, Cloudflare, Firebase, payment, or
+  other provider credentials and uses the safe default configuration.
+
+## Remaining merge blockers
+
+1. **Live Supabase migration and RLS validation has not run.**
+2. **No trusted server-side membership, document, payment, newsletter, or
+   notification operation is implemented and validated end to end.**
+3. **Supabase Auth and invitation flows have not been validated against a
+   configured non-production project.**
+4. **Private Storage and signed URLs have not been validated with separate
+   identities.**
+5. **Brevo, Turnstile, rate limiting, sender-domain, and delivery controls
+   have not been configured or tested.**
+6. **A current online dependency audit has not been obtained; the prior
+   high-severity finding remains unresolved.**
+7. **The new GitHub Actions workflow has no successful remote run yet, and
+   branch-protection status is unverified.**
+8. **The complete local validation suite has passed, but final committed-tree
+   hygiene and remote CI results are still pending.**
+9. **Approved legal, operational, retention, support, finance-instruction, and
+   incident-response content still requires owner confirmation.**
+
+## Required next phase
+
+1. Commit the focused implementation changes without rewriting history, then
+   push normally to the feature branch. Do not merge PR #1.
+2. Let the CI workflow complete; require its named checks through branch
+   protection before considering merge.
+3. Run an approved online npm audit for all and production dependencies, retain
+   a redacted report outside source control, and remediate each advisory based
+   on exact dependency paths and production reachability.
+4. Start a disposable Supabase environment, apply all migrations, and run
+   reproducible cross-identity RLS, storage, and Auth tests.
+5. Implement and test trusted, idempotent server operations one workflow at a
+   time. Keep public mutation routes unavailable until their gate prerequisites
+   and operational controls are independently verified.
+6. Configure providers and environment values through secret storage, prove
+   the intended gate behavior in staging with synthetic data only, and rerun
+   the complete validation, hygiene, and client-bundle scans.
+7. Obtain product, security, privacy, and operations approval for a new audit.
 
 ## Final recommendation
 
-**DO NOT MERGE.** The historical feature-branch privacy blocker is remediated in the clean branch, but the remaining external Supabase/Auth validation, disabled production workflows, dependency advisories, and missing remote CI gate still require resolution.
+**DO NOT MERGE.** The current work materially improves the production-readiness
+foundation and preserves fail-closed behavior, but it does not yet have the
+live Supabase/RLS, provider, dependency, CI, and end-to-end workflow evidence
+required for a production merge.

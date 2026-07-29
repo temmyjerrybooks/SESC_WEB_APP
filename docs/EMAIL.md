@@ -1,79 +1,27 @@
-# Email Operations
+# Email operations
 
 ## Current status
 
-Email delivery is intentionally not implemented in the current application. The newsletter route rejects requests before reading an address, so it does not subscribe anyone, retain an email address, or send mail. Membership submissions are likewise unavailable. This is deliberate until the club approves sender identity, templates, data handling, and delivery credentials.
+The repository has a branded React-rendered transactional template foundation and a server-only Brevo request adapter. It creates a generic non-sensitive subject, HTML and plain-text fallback, and one idempotency-labelled provider request. No route invokes it, no automated test sends a real message, and the email feature gate is unavailable by default.
 
-Do not describe the preview as sending club email, and do not collect a subscriber list for production use from it.
+The application must never report a message as delivered when Brevo is unavailable. The adapter returns unavailable or rejected rather than a success claim when required configuration is absent or a provider call fails.
 
-## Delivery architecture
+## Template inventory
 
-The intended provider is Brevo using a server-only adapter. Application code should call a small domain service, not the Brevo SDK directly from UI components.
+The template inventory covers verification support, welcome, application received/correction/approved/rejected, receipt received/correction/approved/rejected, membership activated/expiring, password-reset support, executive invitation, administrator notification, newsletter confirmation, and unsubscribe confirmation.
 
-```text
-authorised server event
-  -> validate event and recipient preference
-  -> select approved transactional or marketing template
-  -> render safe variables and plain-text alternative
-  -> Brevo server-side API/SMTP delivery
-  -> record minimal delivery event / audit event
-```
+Subjects intentionally avoid identity-document, full payment-reference, password, token, and private application data. No document is attached to email.
 
-The browser must never receive `BREVO_API_KEY`, SMTP credentials, full delivery payloads, or other subscribers' addresses.
+## Enablement prerequisites
 
-## Required external configuration
+1. Store BREVO_API_KEY or approved SMTP settings in server-only deployment secrets.
+2. Set BREVO_SENDER_ADDRESS and BREVO_SENDER_NAME after sender/domain verification, SPF/DKIM, bounce ownership, and support ownership are approved.
+3. Keep SESC_PREVIEW_SAFE_MODE=false only in the reviewed environment, then set SESC_EMAIL_DELIVERY_ENABLED=true after an idempotent delivery queue is deployed.
+4. Separate transactional and marketing consent. Newsletter sending requires a confirmed subscription and a working unsubscribe operation.
+5. Use sandbox or allow-listed test recipients in staging; never point automated tests at a live audience.
 
-Before enabling delivery, an authorised owner must supply:
+## Server-operation requirements
 
-- A Brevo account and server-only `BREVO_API_KEY` in the hosting provider's secret store.
-- An approved sender name, sender address, reply-to address, and verified sending domain. These values are not yet represented in `docs/environment.example`; add them as non-secret deployment configuration only when the email adapter is implemented.
-- Domain DNS records required by Brevo (SPF/DKIM and any tracking domain choice), verified in Brevo.
-- An approved unsubscribe/contact route for newsletters and campaigns.
-- Ownership for bounce, complaint, suppression, and delivery-failure review.
-- Final legal/privacy wording and consent rules for marketing messages.
+A future trusted queue must re-fetch recipient identity/preferences, render allow-listed HTTPS action links, record only minimal delivery metadata, and retry with an idempotency key. It must not log full recipient addresses, rendered sensitive content, keys, reset tokens, document URLs, or receipt contents.
 
-Use a separate Brevo project or clearly isolated audience for development/staging. Never point a staging environment at a live marketing audience.
-
-## Message classes
-
-| Class | Examples | Consent / unsubscribe expectation |
-| --- | --- | --- |
-| Transactional | Verify email, password reset, application received, payment decision, membership activation, event registration | Necessary service/security messages; do not add marketing content. |
-| Operational | Executive invitation, correction request, support ticket response, important event update | Send only to the relevant authorised recipient; retain minimal audit metadata. |
-| Marketing | Newsletter, partner opportunity, promotional event reminder | Require valid opt-in, preference controls, and a functioning unsubscribe link. |
-
-## Approved template inventory
-
-The intended template set is:
-
-- Verify email; welcome; password reset; account invitation; executive invitation.
-- Application received; application requires correction; application approved; application declined.
-- Payment receipt received; payment approved; payment rejected.
-- Membership activated; membership expiring; membership expired; renewal confirmed; digital card issued.
-- Event registration; event reminder; event update; supporters' trip confirmation; gala invitation.
-- Contact-enquiry acknowledgement; support-ticket acknowledgement; administrator notification.
-
-Each template should provide a text fallback, accessible logo alt text, a concise purpose-specific subject, a single prominent action where applicable, and SESC green/white/subtle-gold branding. Do not include identity-document details, full payment references, passwords, access tokens, or unredacted personal data in email content.
-
-## Safe implementation requirements
-
-1. Trigger messages from successful server-side domain events, never from a client-side button click alone.
-2. Re-fetch and authorise the recipient context at send time; do not trust a browser-provided email address for privileged messages.
-3. Use signed, time-limited links for sensitive actions. Never email a service-role key or raw reset token in logs.
-4. Escape/sanitise template variables and use allow-listed URLs based on `NEXT_PUBLIC_SITE_URL`.
-5. Store only what operations need: template ID/version, event ID, recipient identifier or protected address reference, provider message ID, status, and timestamps.
-6. Store render bodies only when a documented retention need exists; otherwise avoid them.
-7. Handle provider errors without exposing credentials or recipient information in client responses.
-8. Implement idempotency so retries do not send duplicate membership or payment messages.
-
-## Testing and release checks
-
-- Unit-test template input validation, preference logic, URL construction, and plain-text alternatives.
-- In test/staging, use a sandbox/allow-list recipient address controlled by the team.
-- Verify sender-domain authentication, unsubscribe links, deep links, mobile rendering, and accessibility before enabling production delivery.
-- Test bounce/complaint handling and ensure a suppressed address cannot receive repeated marketing sends.
-- Confirm event logs exclude secrets and sensitive attachment URLs.
-
-## Operational response
-
-If the provider reports a credential leak, unexpected campaign, unusual bounce rate, or recipient-data issue: disable the delivery key in the provider/host immediately, preserve only safe diagnostic evidence, notify the authorised security contact privately, and rotate/review credentials before re-enabling delivery.
+If Brevo reports compromise, unexpected delivery, abnormal bounce rate, or recipient-data concern: disable the key, pause the gate, preserve safe diagnostics, notify the authorised security contact privately, rotate credentials, and revalidate before re-enabling.

@@ -1,52 +1,47 @@
-# RLS policies
+# Row-level security policies
 
-All security-sensitive public-schema tables created by the initial migration
-have RLS enabled. Service-role requests bypass RLS, so the service key is
-restricted to server code and requires an explicit application-level
-authorisation check before use.
+## Canonical security model
 
-## Pre-production write lockdown
+All private public-schema tables have RLS enabled. The canonical scoped-role table is access_scopes; the canonical audit table is audit_log. The migrations add membership plans, application steps, private documents, renewals, receipts, verification history, newsletter subscribers, notification preferences, security events, and hashed role invitations.
 
-20260728000000_lock_preproduction_client_writes.sql intentionally removes
-browser/PostgREST write policies for RBAC, applications, payments,
-memberships, and private Storage objects. Until reviewed server-side workflows
-exist, those operations must not be exposed to an authenticated browser client.
-The service-role client may be used only by a future server route that
-authenticates the caller, authorises the operation, validates the input, and
-records the appropriate audit event.
+The browser receives only a Supabase anonymous key. The service-role key bypasses RLS and is server-only; it is not an authorisation mechanism. A trusted operation must first authenticate a user, check a permission/scope, validate an allow-listed input, perform an idempotent mutation, and write an audit/security event.
 
-The table below describes the intended policy model after the relevant secure
-workflow is implemented and explicitly reviewed; it is not permission to
-remove the pre-production lockdown.
+## Current pre-production posture
 
-| Resource | Read | Write |
+Browser table writes and raw private Storage access are deliberately denied. This is not an incomplete policy to be relaxed for a demo; it is the release gate until reviewed server/RPC workflow operations exist.
+
+| Resource | Browser read | Browser write |
 | --- | --- | --- |
-| profiles | Owner or scoped profile staff | Owner safe fields or scoped profile manager; trigger protects platform fields |
-| chapters | Active rows public; inactive rows scoped staff | Scoped/national chapter managers |
-| roles, permissions, role_permissions | Authenticated users | Global role administrators |
-| access_scopes, user_roles | Own grants or scope managers | Scope managers; role trigger adds escalation controls |
-| user_chapter_assignments | Owner or scoped staff | Scoped chapter/membership managers |
-| membership_applications | Owner, scoped reviewer, or payment reviewer | Owner eligible workflow steps or scoped reviewer |
-| payments | Payer or scoped finance officer | Payer evidence updates or scoped finance review |
-| memberships | Member or scoped membership staff | Scoped membership managers |
-| audit_log | Scoped/national audit readers | Server and security-definer audit triggers only |
-| notifications | Recipient | Recipient can only change read_at |
-| Private Storage objects | Uploader's UUID-prefixed folder | Uploader's UUID-prefixed folder; staff through signed URLs |
+| Profiles | Self or authorised scoped reader | Denied while pre-production lock is active |
+| Membership applications and steps | Applicant or authorised application reviewer | Denied |
+| Membership plans | Active public plans only | Denied |
+| Memberships | Self or authorised scoped reader | Denied |
+| Payments | Payer only | Denied |
+| Finance queue | Minimal authorised RPC projection | No raw payment write |
+| Documents and receipts | No raw object/browser metadata read | Denied |
+| Newsletter subscribers | No read | Denied |
+| Notifications | Recipient read; read-state only through authenticated RPC | No direct table write |
+| Roles, scopes, permissions, invitations | No unscoped browser mutation | Denied |
+| Audit/security events | Authorised audit scope only | Denied |
 
-## Required verification
+## Finance data minimisation
 
-After deployment, test with separate accounts:
+Finance permission no longer grants full membership application access. The finance_payment_queue RPC returns only payment/application references, chapter, amount, currency, method, status, receipt presence, verification decision, and timestamps. It deliberately excludes applicant identity, address, date of birth, emergency contact, identity-document/photo paths, receipt paths, and bank/provider references.
 
-1. An applicant cannot read another applicant's profile, application, payment,
-   receipt, membership, notification, or private object.
-2. A chapter officer can review only the chapter matching their role scope.
-3. A national officer can access nationwide records only when their role grants
-   the relevant permission.
-4. A finance officer cannot approve an unrelated payment and cannot alter its
-   amount, payer, or application.
-5. A member cannot make their own membership active or grant themselves a role.
-6. An auditor can read audit records but cannot mutate them.
-7. A public card-verification request receives no private profile data and no
-   details for an inactive or expired card.
+## Storage
 
-Keep these tests in automated integration coverage as the schema evolves.
+member-private, payment-receipts, and membership-documents are private. Metadata requires UUID-randomised paths, approved MIME/extension combinations, checksums, and a five-megabyte limit. Future signed URLs must be generated only after a server-side permission check, must expire quickly, and must not reveal objects from an unrelated application, chapter, or user.
+
+## Required live verification
+
+Static verification is available with node scripts/verify-supabase-schema.mjs. It proves policy presence, not runtime behavior. Before setting RLS readiness true, use separate disposable accounts to prove:
+
+1. An applicant cannot read another applicant's profile, application, payment, receipt, membership, notification, or private object.
+2. A Chapter A officer cannot read or mutate Chapter B private resources without a national scope.
+3. A finance officer can read only the minimal queue and an authorised receipt, not identity-document metadata.
+4. A member cannot approve an application, verify a payment, activate membership, or assign a role.
+5. A suspended account cannot use protected server routes.
+6. A super-administrator role cannot be self-assigned from browser input and its assignment creates a security event.
+7. An invitation token cannot be read from the database, reused after acceptance, or applied to another authenticated recipient.
+
+Do not state that RLS is validated until these live cross-identity tests have actually run.
