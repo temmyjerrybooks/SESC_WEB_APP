@@ -38,7 +38,7 @@ history, force-push, merge the pull request, or query credentials.
 
 | Area | Verified local evidence | What the evidence does not prove |
 | --- | --- | --- |
-| Continuous integration | .github/workflows/ci.yml defines read-only, concurrency-controlled Security & hygiene, Static quality, and Browser tests jobs for PRs, main, the feature branch, and manual dispatch. The browser job uses a production build and Chromium; reports upload only on failure. | No GitHub Actions run has completed for these uncommitted changes, and branch protection has not been verified. |
+| Continuous integration | .github/workflows/ci.yml defines read-only, concurrency-controlled Security & hygiene, Static quality, and Browser tests jobs for PRs, main, the feature branch, and manual dispatch. The browser job uses a production build and Chromium; reports upload only on failure. PR CI run 30423560530 completed successfully for this branch head, including all three named jobs. | Branch protection cannot be enabled for this private repository under the current GitHub plan; the GitHub API returned its documented upgrade-or-public-repository restriction. |
 | Dependency monitoring | .github/dependabot.yml schedules weekly npm and GitHub Actions checks with conservative open-PR limits and no automatic merge setting. | Dependabot has not yet created or validated an update PR. |
 | Environment and feature gates | Typed public/server validation and server-only gates exist for authentication, membership applications, private documents, manual payments, newsletters, email delivery, and each portal. A gate defaults unavailable and requires preview-safe mode to be explicitly disabled, its server-only enablement setting, and its relevant prerequisites. Health returns only availability states and sets no-store caching. | Environment flags are attestations, not evidence that a database, bucket, RLS policy, provider, or server workflow is live and safe. |
 | Authentication and portals | Auth UI requires both a browser-safe approval flag and the server-side authentication gate. Server portal checks use the appropriate portal gate, a Supabase session, account status, and database role/membership data. Safe return-path and authorization helper tests are present. | Registration, verification, sign-in/out, refresh, reset, suspension, invitation acceptance, and role access have not been validated against Supabase. |
@@ -66,6 +66,7 @@ The following commands were run locally on 29 July 2026:
 | npm run build | Passed: Next.js production build generated 57 routes. |
 | Production Playwright against an externally owned built server | Passed: 10 tests, 1 intentional development-preview skip. |
 | Browser-bundle sensitive-pattern scan | Passed: zero matching files in .next/static for high-confidence credential values or server-only environment names. |
+| GitHub Actions PR CI run 30423560530 | Passed: Static quality, Security & hygiene, and Browser tests all completed successfully. |
 
 The hygiene command uses Git tracked paths. The complete staged tree was
 scanned after every final source, migration, workflow, and documentation file
@@ -144,8 +145,9 @@ unimplemented or unverified.
    have not been configured or tested.**
 6. **A current online dependency audit has not been obtained; the prior
    high-severity finding remains unresolved.**
-7. **The new GitHub Actions workflow has no successful remote run yet, and
-   branch-protection status is unverified.**
+7. **The new GitHub Actions workflow has a successful PR run, but main branch
+   protection cannot be enabled for this private repository under the current
+   GitHub plan.**
 8. **The complete local validation suite has passed, but final committed-tree
    hygiene and remote CI results are still pending.**
 9. **Approved legal, operational, retention, support, finance-instruction, and
@@ -155,8 +157,8 @@ unimplemented or unverified.
 
 1. Commit the focused implementation changes without rewriting history, then
    push normally to the feature branch. Do not merge PR #1.
-2. Let the CI workflow complete; require its named checks through branch
-   protection before considering merge.
+2. Keep the named CI checks required once repository visibility or the GitHub
+   plan permits branch protection; do not bypass the platform restriction.
 3. Run an approved online npm audit for all and production dependencies, retain
    a redacted report outside source control, and remediate each advisory based
    on exact dependency paths and production reachability.
