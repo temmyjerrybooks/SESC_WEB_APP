@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Create a secure Super Eagles Supporters Club account.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RegisterPage() {
   return <AuthPage mode="register" />;
 }

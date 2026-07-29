@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Verify the email address for your Super Eagles Supporters Club account.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function EmailVerificationPage() {
   return <AuthPage mode="email-verification" />;
 }

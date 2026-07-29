@@ -1,16 +1,12 @@
 import { redirect } from "next/navigation";
+import {
+  canAccessPortal,
+  isAccountActive,
+  type PortalAccess,
+} from "@/lib/auth/authorization";
+import { isFeatureEnabled } from "@/lib/environment/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
-
-export type PortalAccess = "member" | "executive" | "administrator";
-
-const executiveRoles = new Set([
-  "chapter_executive",
-  "chapter_chairman",
-  "state_coordinator",
-  "international_chapter_coordinator",
-  "national_executive",
-]);
 
 function signInRedirect(pathname: string, reason?: string) {
   const params = new URLSearchParams({ next: pathname });
@@ -22,6 +18,14 @@ function signInRedirect(pathname: string, reason?: string) {
 
 function configurationUnavailableRedirect() {
   return "/maintenance?reason=configuration";
+}
+
+function featureForPortal(access: PortalAccess) {
+  return access === "member"
+    ? "memberPortal"
+    : access === "executive"
+      ? "executivePortal"
+      : "adminPortal";
 }
 
 function activeMembershipDate() {
@@ -57,6 +61,10 @@ function roleCodesFrom(
  * the server even when the proxy has already checked a session.
  */
 export async function requirePortalAccess(access: PortalAccess, pathname: string) {
+  if (process.env.NODE_ENV === "production" && !isFeatureEnabled(featureForPortal(access))) {
+    redirect(configurationUnavailableRedirect());
+  }
+
   if (!isSupabaseConfigured()) {
     if (process.env.NODE_ENV === "production") {
       redirect(configurationUnavailableRedirect());
@@ -74,6 +82,16 @@ export async function requirePortalAccess(access: PortalAccess, pathname: string
     redirect(signInRedirect(pathname));
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("account_status")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError || !isAccountActive(profile?.account_status)) {
+    redirect(signInRedirect(pathname, "account-unavailable"));
+  }
+
   const { data: assignments, error: roleError } = await supabase
     .from("user_roles")
     .select("revoked_at, expires_at, role:roles(code)")
@@ -89,6 +107,8 @@ export async function requirePortalAccess(access: PortalAccess, pathname: string
     expires_at: string | null;
   }>);
 
+  let hasActiveMembership = false;
+
   if (access === "member") {
     const { data: memberships, error: membershipError } = await supabase
       .from("memberships")
@@ -102,21 +122,10 @@ export async function requirePortalAccess(access: PortalAccess, pathname: string
       redirect(signInRedirect(pathname, "access-unavailable"));
     }
 
-    const hasMemberRole = roleCodes.includes("member");
-    const hasActiveMembership = (memberships?.length ?? 0) > 0;
-
-    if (!hasMemberRole && !hasActiveMembership) {
-      redirect(signInRedirect(pathname, "member-required"));
-    }
-
-    return { mode: "authenticated" as const, userId: user.id };
+    hasActiveMembership = (memberships?.length ?? 0) > 0;
   }
 
-  const authorised = access === "administrator"
-    ? roleCodes.includes("super_administrator")
-    : roleCodes.some((role) => executiveRoles.has(role));
-
-  if (!authorised) {
+  if (!canAccessPortal(access, roleCodes, hasActiveMembership)) {
     redirect(signInRedirect(pathname, "access-denied"));
   }
 

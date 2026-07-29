@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   description: "Set a new password for your Super Eagles Supporters Club account.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function ResetPasswordPage() {
   return <AuthPage mode="reset-password" />;
 }

@@ -316,6 +316,15 @@ export function DashboardShell({ role, children }: DashboardShellProps) {
           >
             <CircleHelp aria-hidden="true" className="h-[19px] w-[19px]" />
           </button>
+          <form action="/auth/signout" method="post">
+            <button
+              aria-label="Sign out"
+              className="min-h-10 rounded-xl border border-white/[0.12] px-3 text-xs font-bold text-[#dfe9e0] outline-none transition hover:border-[#70db9d]/55 hover:bg-white/[0.06] focus-visible:ring-2 focus-visible:ring-[#70db9d]"
+              type="submit"
+            >
+              Sign out
+            </button>
+          </form>
           <BrandMark compact initials={config.initials} />
         </div>
       </header>

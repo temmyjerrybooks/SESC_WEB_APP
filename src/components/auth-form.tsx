@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
+import { safeRelativePath } from "@/lib/auth/safe-redirect";
 import { createClient } from "@/lib/supabase/client";
-import { isAuthActionsEnabled } from "@/lib/supabase/config";
 
 export type AuthFormMode =
   | "login"
@@ -47,7 +47,7 @@ const copy: Record<AuthFormMode, { eyebrow: string; title: string; summary: stri
 };
 
 function redirectUrl(path: "/email-verification" | "/reset-password") {
-  return `${window.location.origin}${path}`;
+  return `${window.location.origin}/auth/callback?next=${encodeURIComponent(path)}`;
 }
 
 function safeErrorMessage(error: unknown, action: AuthFormMode): string {
@@ -168,10 +168,10 @@ function PasswordFields({
   );
 }
 
-export function AuthForm({ mode }: { mode: AuthFormMode }) {
+export function AuthForm({ enabled, mode }: { enabled: boolean; mode: AuthFormMode }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const configured = isAuthActionsEnabled();
+  const configured = enabled;
   const [email, setEmail] = useState(() => {
     if (typeof window === "undefined" || mode !== "email-verification") {
       return "";
@@ -198,9 +198,7 @@ export function AuthForm({ mode }: { mode: AuthFormMode }) {
   const resetInputsDisabled =
     disabled || (mode === "reset-password" && (!recoveryChecked || resetUnavailable || passwordUpdated));
   const requestedDestination = searchParams.get("next");
-  const postSignInDestination = requestedDestination?.startsWith("/") && !requestedDestination.startsWith("//")
-    ? requestedDestination
-    : "/member";
+  const postSignInDestination = safeRelativePath(requestedDestination, "/member");
 
   useEffect(() => {
     if (!configured || (mode !== "reset-password" && mode !== "email-verification")) {

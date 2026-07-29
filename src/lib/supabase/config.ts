@@ -1,13 +1,12 @@
-export type PublicSupabaseConfig = {
-  url: string;
-  anonKey: string;
-};
+import {
+  readPublicEnvironment,
+  type PublicSupabaseConfig,
+} from "@/lib/environment/public";
+
+export type { PublicSupabaseConfig } from "@/lib/environment/public";
 
 export function isSupabaseConfigured(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
+  return Boolean(readPublicEnvironment().supabase);
 }
 
 /**
@@ -17,21 +16,17 @@ export function isSupabaseConfigured(): boolean {
  * were supplied for a different Supabase feature.
  */
 export function isAuthActionsEnabled(): boolean {
-  return (
-    isSupabaseConfigured() &&
-    process.env.NEXT_PUBLIC_AUTH_ACTIONS_ENABLED === "true"
-  );
+  return readPublicEnvironment().authActionsEnabled;
 }
 
 export function getPublicSupabaseConfig(): PublicSupabaseConfig {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const { supabase } = readPublicEnvironment();
 
-  if (!url || !anonKey) {
+  if (!supabase) {
     throw new Error(
-      "Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+      "Supabase is not configured. Configure the public Supabase settings before enabling this feature.",
     );
   }
 
-  return { url, anonKey };
+  return supabase;
 }
