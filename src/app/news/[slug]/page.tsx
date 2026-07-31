@@ -3,10 +3,14 @@ import { notFound } from "next/navigation";
 
 import { DetailPage } from "@/components/public-content";
 import { createPageMetadata, findBySlug, newsArticles } from "@/data/site-content";
+import { managedNewsDirectoryEntry } from "@/lib/content/managed-news";
+import { getPublishedManagedNewsBySlug } from "@/lib/server/published-news";
 
 interface NewsArticlePageProps {
   readonly params: Promise<{ slug: string }>;
 }
+
+export const dynamic = "force-dynamic";
 
 export function generateStaticParams() {
   return newsArticles.map(({ slug }) => ({ slug }));
@@ -14,7 +18,10 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: NewsArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
-  const article = findBySlug(newsArticles, slug);
+  const managedArticle = await getPublishedManagedNewsBySlug(slug);
+  const article = managedArticle
+    ? managedNewsDirectoryEntry(managedArticle)
+    : findBySlug(newsArticles, slug);
 
   return createPageMetadata(
     article?.title ?? "News article",
@@ -24,7 +31,10 @@ export async function generateMetadata({ params }: NewsArticlePageProps): Promis
 
 export default async function NewsArticlePage({ params }: NewsArticlePageProps) {
   const { slug } = await params;
-  const article = findBySlug(newsArticles, slug);
+  const managedArticle = await getPublishedManagedNewsBySlug(slug);
+  const article = managedArticle
+    ? managedNewsDirectoryEntry(managedArticle)
+    : findBySlug(newsArticles, slug);
 
   if (!article) {
     notFound();

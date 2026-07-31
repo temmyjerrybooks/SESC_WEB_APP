@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { DashboardEyebrow, DashboardPanel, DashboardShell } from "@/components/dashboard-shell";
+import { LiveMemberPortal } from "@/components/live-portals";
 import { requirePortalAccess } from "@/lib/auth/portal-access";
 
 export const metadata: Metadata = {
@@ -82,7 +83,11 @@ function MemberMetric({ label, value, note, icon: Icon, tone }: MemberMetricProp
 }
 
 export default async function MemberPage() {
-  await requirePortalAccess("member", "/member");
+  const access = await requirePortalAccess("member", "/member");
+  if (access.mode === "authenticated") {
+    return <LiveMemberPortal userId={access.userId} />;
+  }
+
   return (
     <DashboardShell role="member">
       <div className="space-y-6 sm:space-y-8">

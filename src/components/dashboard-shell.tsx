@@ -108,6 +108,13 @@ const dashboardConfigs: Record<DashboardRole, DashboardConfig> = {
 type DashboardShellProps = {
   role: DashboardRole;
   children: ReactNode;
+  /**
+   * Preview is deliberately the default so the existing local walkthroughs
+   * remain clearly labelled. Authenticated portal pages opt into live mode
+   * only after their server-side access guard has completed.
+   */
+  mode?: "preview" | "live";
+  actorInitials?: string;
 };
 
 function BrandMark({ initials, compact = false }: { initials: string; compact?: boolean }) {
@@ -156,13 +163,30 @@ function NavItems({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => 
   );
 }
 
-function SidebarContent({ config, onNavigate }: { config: DashboardConfig; onNavigate?: () => void }) {
-  const helpId = onNavigate ? "dashboard-mobile-demo-action-help" : "dashboard-demo-action-help";
+function SidebarContent({
+  config,
+  mode,
+  actorInitials,
+  onNavigate,
+}: {
+  config: DashboardConfig;
+  mode: "preview" | "live";
+  actorInitials: string;
+  onNavigate?: () => void;
+}) {
+  const helpId = onNavigate ? "dashboard-mobile-action-help" : "dashboard-action-help";
+  const actionLabel = mode === "live" ? "Protected workspace" : config.actionLabel;
+  const actionHint = mode === "live"
+    ? "Only server-authorised workflow controls can change protected records."
+    : config.actionHint;
+  const navItems = mode === "live"
+    ? config.navItems.map((item) => ({ ...item, badge: undefined }))
+    : config.navItems;
 
   return (
     <>
       <div className="mb-8 flex items-center gap-3 px-1">
-        <BrandMark initials={config.initials} />
+        <BrandMark initials={actorInitials} />
         <div className="min-w-0">
           <p className="truncate text-base font-extrabold tracking-[-0.025em] text-[#76e9a6]">{config.name}</p>
           <p className="mt-0.5 truncate text-xs font-semibold uppercase tracking-[0.08em] text-[#e9c349]">{config.eyebrow}</p>
@@ -170,7 +194,7 @@ function SidebarContent({ config, onNavigate }: { config: DashboardConfig; onNav
       </div>
 
       <nav aria-label={`${config.name} navigation`} className="flex-1">
-        <NavItems items={config.navItems} onNavigate={onNavigate} />
+        <NavItems items={navItems} onNavigate={onNavigate} />
       </nav>
 
       <div className="mt-8 border-t border-white/[0.09] pt-5">
@@ -181,18 +205,24 @@ function SidebarContent({ config, onNavigate }: { config: DashboardConfig; onNav
           type="button"
         >
           {config.name === "SESC Admin" ? <FileDown aria-hidden="true" className="h-[18px] w-[18px]" /> : <Sparkles aria-hidden="true" className="h-[18px] w-[18px]" />}
-          <span>{config.actionLabel}</span>
+          <span>{actionLabel}</span>
         </button>
         <p className="mt-2 px-1 text-xs leading-5 text-[#839287]" id={helpId}>
-          {config.actionHint}
+          {actionHint}
         </p>
       </div>
     </>
   );
 }
 
-export function DashboardShell({ role, children }: DashboardShellProps) {
+export function DashboardShell({
+  role,
+  children,
+  mode = "preview",
+  actorInitials,
+}: DashboardShellProps) {
   const config = dashboardConfigs[role];
+  const resolvedInitials = actorInitials?.trim().slice(0, 3).toUpperCase() || config.initials;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const mobileDialogRef = useRef<HTMLElement>(null);
@@ -265,7 +295,7 @@ export function DashboardShell({ role, children }: DashboardShellProps) {
       </a>
 
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[17.25rem] flex-col border-r border-white/[0.08] bg-[#0d120f] p-5 shadow-[16px_0_50px_rgba(0,0,0,0.12)] lg:flex">
-        <SidebarContent config={config} />
+        <SidebarContent actorInitials={resolvedInitials} config={config} mode={mode} />
       </aside>
 
       <header className="sticky top-0 z-20 flex min-h-16 items-center justify-between gap-3 border-b border-white/[0.08] bg-[#0b100d]/90 px-4 backdrop-blur-xl lg:ml-[17.25rem] lg:px-8">
@@ -290,10 +320,10 @@ export function DashboardShell({ role, children }: DashboardShellProps) {
         <div className="flex items-center gap-1.5 sm:gap-2">
           <span className="hidden items-center gap-1.5 rounded-full border border-[#e9c349]/25 bg-[#e9c349]/10 px-3 py-1.5 text-xs font-bold text-[#f5cf4c] md:flex">
             <Crown aria-hidden="true" className="h-3.5 w-3.5" />
-            Development preview
+            {mode === "live" ? "Authenticated session" : "Development preview"}
           </span>
           <button
-            aria-label="Search is unavailable in this demo"
+            aria-label={mode === "live" ? "Search is not configured" : "Search is unavailable in this demo"}
             className="grid h-10 w-10 cursor-not-allowed place-items-center rounded-xl text-[#91a095] opacity-55"
             disabled
             type="button"
@@ -301,7 +331,7 @@ export function DashboardShell({ role, children }: DashboardShellProps) {
             <Search aria-hidden="true" className="h-[19px] w-[19px]" />
           </button>
           <button
-            aria-label="Notifications are unavailable in this demo"
+            aria-label={mode === "live" ? "Notifications are not configured" : "Notifications are unavailable in this demo"}
             className="grid h-10 w-10 cursor-not-allowed place-items-center rounded-xl text-[#91a095] opacity-55"
             disabled
             type="button"
@@ -309,7 +339,7 @@ export function DashboardShell({ role, children }: DashboardShellProps) {
             <Bell aria-hidden="true" className="h-[19px] w-[19px]" />
           </button>
           <button
-            aria-label="Help is unavailable in this demo"
+            aria-label={mode === "live" ? "Help is not configured" : "Help is unavailable in this demo"}
             className="hidden h-10 w-10 cursor-not-allowed place-items-center rounded-xl text-[#91a095] opacity-55 sm:grid"
             disabled
             type="button"
@@ -325,7 +355,7 @@ export function DashboardShell({ role, children }: DashboardShellProps) {
               Sign out
             </button>
           </form>
-          <BrandMark compact initials={config.initials} />
+          <BrandMark compact initials={resolvedInitials} />
         </div>
       </header>
 
@@ -356,7 +386,12 @@ export function DashboardShell({ role, children }: DashboardShellProps) {
                 <X aria-hidden="true" className="h-5 w-5" />
               </button>
             </div>
-            <SidebarContent config={config} onNavigate={() => setMobileMenuOpen(false)} />
+            <SidebarContent
+              actorInitials={resolvedInitials}
+              config={config}
+              mode={mode}
+              onNavigate={() => setMobileMenuOpen(false)}
+            />
           </aside>
         </div>
       ) : null}

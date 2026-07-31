@@ -4,6 +4,13 @@ export type TurnstileVerification = {
 
 type TurnstileResponse = {
   success?: boolean;
+  action?: string;
+  hostname?: string;
+};
+
+export type TurnstileExpectation = {
+  expectedAction?: string;
+  expectedHostname?: string;
 };
 
 type FetchLike = (
@@ -19,11 +26,19 @@ export async function verifyTurnstile(
   token: string | undefined,
   secret: string | undefined,
   remoteIp: string | undefined,
-  fetcher: FetchLike = fetch,
+  expectationOrFetcher?: TurnstileExpectation | FetchLike,
+  suppliedFetcher?: FetchLike,
 ): Promise<TurnstileVerification> {
   if (!token?.trim() || !secret?.trim()) {
     return { status: "unavailable" };
   }
+
+  const expectation = typeof expectationOrFetcher === "function"
+    ? undefined
+    : expectationOrFetcher;
+  const fetcher = (typeof expectationOrFetcher === "function"
+    ? expectationOrFetcher
+    : suppliedFetcher) ?? fetch;
 
   const body = new URLSearchParams({
     secret,
@@ -46,10 +61,27 @@ export async function verifyTurnstile(
       return { status: "failed" };
     }
 
-    return (await response.json()).success
-      ? { status: "passed" }
-      : { status: "failed" };
+    const result = await response.json();
+    if (!result.success) return { status: "failed" };
+    if (expectation?.expectedAction && result.action !== expectation.expectedAction) {
+      return { status: "failed" };
+    }
+    if (
+      expectation?.expectedHostname &&
+      result.hostname?.toLowerCase() !== expectation.expectedHostname.toLowerCase()
+    ) {
+      return { status: "failed" };
+    }
+    return { status: "passed" };
   } catch {
     return { status: "failed" };
+  }
+}
+
+export function turnstileHostnameFromSiteUrl(siteUrl: string | undefined): string | undefined {
+  try {
+    return siteUrl ? new URL(siteUrl).hostname.toLowerCase() : undefined;
+  } catch {
+    return undefined;
   }
 }

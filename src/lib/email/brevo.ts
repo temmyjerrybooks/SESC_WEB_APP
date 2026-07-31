@@ -14,6 +14,16 @@ export type TransactionalDeliveryRequest = {
   idempotencyKey: string;
 };
 
+/** A small server-only escape hatch for trusted public workflow mail. */
+export type BrevoEmailMessage = {
+  recipientEmail: string;
+  subject: string;
+  html: string;
+  text: string;
+  idempotencyKey: string;
+  tags?: readonly string[];
+};
+
 export type DeliveryResult =
   | { status: "unavailable" }
   | { status: "queued" }
@@ -31,6 +41,51 @@ export function isBrevoConfigured(config: BrevoConfiguration): boolean {
 }
 
 /**
+ * Sends a pre-rendered, trusted server email through Brevo. It deliberately
+ * has no logging, retry loop, or browser-facing error details. Callers must
+ * validate recipient data and use an idempotency key before calling it.
+ */
+export async function sendBrevoEmail(
+  message: BrevoEmailMessage,
+  config: BrevoConfiguration,
+  fetcher: FetchLike = fetch,
+): Promise<DeliveryResult> {
+  if (
+    !isBrevoConfigured(config) ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(message.recipientEmail) ||
+    !message.subject.trim() ||
+    !message.html ||
+    !message.text ||
+    !message.idempotencyKey.trim()
+  ) {
+    return { status: "unavailable" };
+  }
+
+  try {
+    const response = await fetcher("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "api-key": config.apiKey!,
+        "content-type": "application/json",
+        "x-request-id": message.idempotencyKey,
+      },
+      body: JSON.stringify({
+        sender: { email: config.senderEmail, name: config.senderName || "SESC Nigeria" },
+        to: [{ email: message.recipientEmail }],
+        subject: message.subject,
+        htmlContent: message.html,
+        textContent: message.text,
+        tags: message.tags?.length ? [...message.tags] : ["transactional", "sesc"],
+      }),
+    });
+
+    return response.ok ? { status: "queued" } : { status: "rejected" };
+  } catch {
+    return { status: "rejected" };
+  }
+}
+
+/**
  * Makes one provider request only. Retries belong to an idempotent server-side
  * job queue once it is configured; this avoids duplicate notices when a
  * provider accepted a request but the connection was interrupted.
@@ -45,22 +100,16 @@ export async function sendTransactionalEmail(
   }
 
   const email = renderTransactionalEmail(request.kind, request.actionUrl);
-  const response = await fetcher("https://api.brevo.com/v3/smtp/email", {
-    method: "POST",
-    headers: {
-      "api-key": config.apiKey!,
-      "content-type": "application/json",
-      "x-request-id": request.idempotencyKey,
-    },
-    body: JSON.stringify({
-      sender: { email: config.senderEmail, name: config.senderName || "SESC Nigeria" },
-      to: [{ email: request.recipientEmail }],
+  return sendBrevoEmail(
+    {
+      recipientEmail: request.recipientEmail,
       subject: email.subject,
-      htmlContent: email.html,
-      textContent: email.text,
+      html: email.html,
+      text: email.text,
+      idempotencyKey: request.idempotencyKey,
       tags: ["transactional", "sesc"],
-    }),
-  });
-
-  return response.ok ? { status: "queued" } : { status: "rejected" };
+    },
+    config,
+    fetcher,
+  );
 }

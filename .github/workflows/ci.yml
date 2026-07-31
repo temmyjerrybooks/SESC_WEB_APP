@@ -56,6 +56,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       - name: Check TypeScript
         run: npm run typecheck
 
@@ -67,6 +70,9 @@ jobs:
 
       - name: Build production application
         run: npm run build
+
+      - name: Scan browser bundle for server-only secret identifiers
+        run: npm run check:bundle
 
   browser-tests:
     name: Browser tests

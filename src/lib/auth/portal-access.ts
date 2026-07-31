@@ -4,6 +4,7 @@ import {
   isAccountActive,
   type PortalAccess,
 } from "@/lib/auth/authorization";
+import { featureForPortal } from "@/lib/auth/portal-routing";
 import { isFeatureEnabled } from "@/lib/environment/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
@@ -18,14 +19,6 @@ function signInRedirect(pathname: string, reason?: string) {
 
 function configurationUnavailableRedirect() {
   return "/maintenance?reason=configuration";
-}
-
-function featureForPortal(access: PortalAccess) {
-  return access === "member"
-    ? "memberPortal"
-    : access === "executive"
-      ? "executivePortal"
-      : "adminPortal";
 }
 
 function activeMembershipDate() {

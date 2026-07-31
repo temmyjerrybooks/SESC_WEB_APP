@@ -15,6 +15,7 @@ describe("newsletter validation", () => {
   it("rejects invalid addresses and unsafe unsubscribe tokens", () => {
     expect(newsletterSubscriptionSchema.safeParse({ email: "not-an-email" }).success).toBe(false);
     expect(isValidUnsubscribeToken("short")).toBe(false);
-    expect(isValidUnsubscribeToken("a".repeat(32))).toBe(true);
+    expect(isValidUnsubscribeToken("a".repeat(32))).toBe(false);
+    expect(isValidUnsubscribeToken("11111111-1111-4111-8111-111111111111")).toBe(true);
   });
 });

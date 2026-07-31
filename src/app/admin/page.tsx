@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { DashboardEyebrow, DashboardPanel, DashboardShell } from "@/components/dashboard-shell";
+import { LiveAdminPortal } from "@/components/live-portals";
 import { requirePortalAccess } from "@/lib/auth/portal-access";
 
 export const metadata: Metadata = {
@@ -106,7 +107,11 @@ function ChapterPulse() {
 }
 
 export default async function AdminPage() {
-  await requirePortalAccess("administrator", "/admin");
+  const access = await requirePortalAccess("administrator", "/admin");
+  if (access.mode === "authenticated") {
+    return <LiveAdminPortal userId={access.userId} />;
+  }
+
   return (
     <DashboardShell role="admin">
       <div className="space-y-6 sm:space-y-8">

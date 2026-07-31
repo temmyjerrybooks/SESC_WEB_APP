@@ -13,5 +13,5 @@ export function normalizeNewsletterEmail(email: string): string {
 }
 
 export function isValidUnsubscribeToken(token: string): boolean {
-  return /^[A-Za-z0-9_-]{32,128}$/.test(token);
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token);
 }

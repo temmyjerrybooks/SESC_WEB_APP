@@ -14,7 +14,9 @@ export function AppChrome({ children }: { children: ReactNode }) {
   return (
     <>
       {!isPortal && <SiteHeader />}
-      <main id="main-content">{children}</main>
+      <main id="main-content" tabIndex={-1}>
+        {children}
+      </main>
       {!isPortal && <SiteFooter />}
     </>
   );

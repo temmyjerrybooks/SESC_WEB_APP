@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   readPublicEnvironment,
+  trustedHttpsSiteOrigin,
   type EnvironmentInput,
 } from "./public";
 
@@ -10,6 +11,7 @@ export const featureGateNames = [
   "membershipApplications",
   "privateDocumentUploads",
   "manualPaymentVerification",
+  "contactEnquiries",
   "newsletterSubscriptions",
   "emailDelivery",
   "memberPortal",
@@ -29,8 +31,13 @@ export type FeatureGateRequirement =
   | "row-level-security"
   | "private-storage"
   | "email-provider-configuration"
+  | "contact-delivery-configuration"
+  | "contact-retention-controls"
   | "newsletter-abuse-protection"
+  | "rate-limiting"
+  | "trusted-proxy-headers"
   | "turnstile-configuration"
+  | "authentication-public-approval"
   | "authentication"
   | "private-document-uploads";
 
@@ -75,6 +82,7 @@ export const serverFeatureEnvironmentSchema = z.object({
   SESC_MEMBERSHIP_APPLICATIONS_ENABLED: optionalBooleanFlag,
   SESC_PRIVATE_DOCUMENT_UPLOADS_ENABLED: optionalBooleanFlag,
   SESC_MANUAL_PAYMENT_VERIFICATION_ENABLED: optionalBooleanFlag,
+  SESC_CONTACT_ENQUIRIES_ENABLED: optionalBooleanFlag,
   SESC_NEWSLETTER_SUBSCRIPTIONS_ENABLED: optionalBooleanFlag,
   SESC_EMAIL_DELIVERY_ENABLED: optionalBooleanFlag,
   SESC_MEMBER_PORTAL_ENABLED: optionalBooleanFlag,
@@ -84,6 +92,10 @@ export const serverFeatureEnvironmentSchema = z.object({
   SESC_ROW_LEVEL_SECURITY_READY: optionalBooleanFlag,
   SESC_PRIVATE_STORAGE_READY: optionalBooleanFlag,
   SESC_NEWSLETTER_ABUSE_PROTECTION_READY: optionalBooleanFlag,
+  SESC_RATE_LIMITING_READY: optionalBooleanFlag,
+  SESC_TRUSTED_PROXY_HEADERS: optionalBooleanFlag,
+  SESC_CONTACT_RETENTION_READY: optionalBooleanFlag,
+  SESC_CONTACT_RECIPIENT: optionalEmail,
   SUPABASE_SERVICE_ROLE_KEY: optionalNonEmptyString,
   TURNSTILE_SECRET_KEY: optionalNonEmptyString,
   BREVO_API_KEY: optionalNonEmptyString,
@@ -111,6 +123,7 @@ function parseServerFeatureEnvironment(
       environment.SESC_PRIVATE_DOCUMENT_UPLOADS_ENABLED,
     SESC_MANUAL_PAYMENT_VERIFICATION_ENABLED:
       environment.SESC_MANUAL_PAYMENT_VERIFICATION_ENABLED,
+    SESC_CONTACT_ENQUIRIES_ENABLED: environment.SESC_CONTACT_ENQUIRIES_ENABLED,
     SESC_NEWSLETTER_SUBSCRIPTIONS_ENABLED:
       environment.SESC_NEWSLETTER_SUBSCRIPTIONS_ENABLED,
     SESC_EMAIL_DELIVERY_ENABLED: environment.SESC_EMAIL_DELIVERY_ENABLED,
@@ -125,6 +138,10 @@ function parseServerFeatureEnvironment(
     SESC_PRIVATE_STORAGE_READY: environment.SESC_PRIVATE_STORAGE_READY,
     SESC_NEWSLETTER_ABUSE_PROTECTION_READY:
       environment.SESC_NEWSLETTER_ABUSE_PROTECTION_READY,
+    SESC_RATE_LIMITING_READY: environment.SESC_RATE_LIMITING_READY,
+    SESC_TRUSTED_PROXY_HEADERS: environment.SESC_TRUSTED_PROXY_HEADERS,
+    SESC_CONTACT_RETENTION_READY: environment.SESC_CONTACT_RETENTION_READY,
+    SESC_CONTACT_RECIPIENT: environment.SESC_CONTACT_RECIPIENT,
     SUPABASE_SERVICE_ROLE_KEY: environment.SUPABASE_SERVICE_ROLE_KEY,
     TURNSTILE_SECRET_KEY: environment.TURNSTILE_SECRET_KEY,
     BREVO_API_KEY: environment.BREVO_API_KEY,
@@ -163,15 +180,8 @@ function commonRequirements(
 
 function emailProviderConfigured(environment: ParsedServerFeatureEnvironment) {
   const hasBrevoApi = Boolean(environment.BREVO_API_KEY);
-  const hasBrevoSmtp = Boolean(
-    environment.BREVO_SMTP_HOST &&
-      environment.BREVO_SMTP_PORT &&
-      environment.BREVO_SMTP_USERNAME &&
-      environment.BREVO_SMTP_PASSWORD,
-  );
-
   return Boolean(
-    (hasBrevoApi || hasBrevoSmtp) &&
+    hasBrevoApi &&
       environment.BREVO_SENDER_ADDRESS &&
       environment.BREVO_SENDER_NAME,
   );
@@ -193,18 +203,35 @@ export function evaluateFeatureGates(
   const rlsReady = serverEnvironment.SESC_ROW_LEVEL_SECURITY_READY === "true";
   const privateStorageReady =
     serverEnvironment.SESC_PRIVATE_STORAGE_READY === "true";
+  const trustedProxyHeaders =
+    serverEnvironment.SESC_TRUSTED_PROXY_HEADERS === "true";
   const serviceRoleReady = Boolean(serverEnvironment.SUPABASE_SERVICE_ROLE_KEY);
   const emailReady = emailProviderConfigured(serverEnvironment);
   const supabaseReady = Boolean(publicEnvironment.supabase);
+  const secureSiteUrl = trustedHttpsSiteOrigin(publicEnvironment.siteUrl);
 
   const authenticationMissing = commonRequirements(
     serverEnvironment.SESC_AUTHENTICATION_ENABLED === "true",
     previewSafeMode,
   );
   if (!supabaseReady) authenticationMissing.push("supabase-public-configuration");
-  if (!publicEnvironment.siteUrl) authenticationMissing.push("site-url");
+  // Account-action requests use the privileged client only to persist the
+  // server-owned rate-limit decision. Do not advertise authentication as
+  // ready when that client cannot be constructed at runtime.
+  if (!serviceRoleReady) authenticationMissing.push("supabase-service-role");
+  if (!publicEnvironment.authActionsEnabled) {
+    authenticationMissing.push("authentication-public-approval");
+  }
+  if (!secureSiteUrl) authenticationMissing.push("site-url");
   if (!databaseReady) authenticationMissing.push("database-migrations");
   if (!rlsReady) authenticationMissing.push("row-level-security");
+  if (serverEnvironment.SESC_RATE_LIMITING_READY !== "true") {
+    authenticationMissing.push("rate-limiting");
+  }
+  if (!trustedProxyHeaders) authenticationMissing.push("trusted-proxy-headers");
+  if (!publicEnvironment.turnstileSiteKey || !serverEnvironment.TURNSTILE_SECRET_KEY) {
+    authenticationMissing.push("turnstile-configuration");
+  }
   const authentication = createGate(true, authenticationMissing);
 
   const emailDeliveryMissing = commonRequirements(
@@ -238,6 +265,12 @@ export function evaluateFeatureGates(
   if (!privateDocumentUploads.enabled) {
     membershipApplicationsMissing.push("private-document-uploads");
   }
+  if (serverEnvironment.SESC_RATE_LIMITING_READY !== "true") {
+    membershipApplicationsMissing.push("rate-limiting");
+  }
+  if (!publicEnvironment.turnstileSiteKey || !serverEnvironment.TURNSTILE_SECRET_KEY) {
+    membershipApplicationsMissing.push("turnstile-configuration");
+  }
   const membershipApplications = createGate(
     true,
     membershipApplicationsMissing,
@@ -261,6 +294,31 @@ export function evaluateFeatureGates(
     manualPaymentVerificationMissing,
   );
 
+  const contactEnquiriesMissing = commonRequirements(
+    serverEnvironment.SESC_CONTACT_ENQUIRIES_ENABLED === "true",
+    previewSafeMode,
+  );
+  if (!supabaseReady) contactEnquiriesMissing.push("supabase-public-configuration");
+  if (!secureSiteUrl) contactEnquiriesMissing.push("site-url");
+  if (!serviceRoleReady) contactEnquiriesMissing.push("supabase-service-role");
+  if (!databaseReady) contactEnquiriesMissing.push("database-migrations");
+  if (!rlsReady) contactEnquiriesMissing.push("row-level-security");
+  if (!emailDelivery.enabled) contactEnquiriesMissing.push("email-provider-configuration");
+  if (!serverEnvironment.SESC_CONTACT_RECIPIENT) {
+    contactEnquiriesMissing.push("contact-delivery-configuration");
+  }
+  if (serverEnvironment.SESC_CONTACT_RETENTION_READY !== "true") {
+    contactEnquiriesMissing.push("contact-retention-controls");
+  }
+  if (serverEnvironment.SESC_RATE_LIMITING_READY !== "true") {
+    contactEnquiriesMissing.push("rate-limiting");
+  }
+  if (!trustedProxyHeaders) contactEnquiriesMissing.push("trusted-proxy-headers");
+  if (!publicEnvironment.turnstileSiteKey || !serverEnvironment.TURNSTILE_SECRET_KEY) {
+    contactEnquiriesMissing.push("turnstile-configuration");
+  }
+  const contactEnquiries = createGate(true, contactEnquiriesMissing);
+
   const newsletterSubscriptionsMissing = commonRequirements(
     serverEnvironment.SESC_NEWSLETTER_SUBSCRIPTIONS_ENABLED === "true",
     previewSafeMode,
@@ -268,6 +326,7 @@ export function evaluateFeatureGates(
   if (!supabaseReady) {
     newsletterSubscriptionsMissing.push("supabase-public-configuration");
   }
+  if (!secureSiteUrl) newsletterSubscriptionsMissing.push("site-url");
   if (!serviceRoleReady) {
     newsletterSubscriptionsMissing.push("supabase-service-role");
   }
@@ -278,6 +337,12 @@ export function evaluateFeatureGates(
   }
   if (serverEnvironment.SESC_NEWSLETTER_ABUSE_PROTECTION_READY !== "true") {
     newsletterSubscriptionsMissing.push("newsletter-abuse-protection");
+  }
+  if (serverEnvironment.SESC_RATE_LIMITING_READY !== "true") {
+    newsletterSubscriptionsMissing.push("rate-limiting");
+  }
+  if (!trustedProxyHeaders) {
+    newsletterSubscriptionsMissing.push("trusted-proxy-headers");
   }
   if (!publicEnvironment.turnstileSiteKey || !serverEnvironment.TURNSTILE_SECRET_KEY) {
     newsletterSubscriptionsMissing.push("turnstile-configuration");
@@ -313,6 +378,7 @@ export function evaluateFeatureGates(
     membershipApplications,
     privateDocumentUploads,
     manualPaymentVerification,
+    contactEnquiries,
     newsletterSubscriptions,
     emailDelivery,
     memberPortal,

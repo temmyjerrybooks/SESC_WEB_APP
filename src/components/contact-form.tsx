@@ -1,12 +1,30 @@
 import Link from "next/link";
 import { ArrowRight, ShieldCheck } from "lucide-react";
+import { ContactSubmissionForm } from "@/components/contact-submission-form";
 
 /**
  * Rendering a data-entry form before contact delivery, retention, and support
  * ownership are ready would invite people to share personal information that
  * the preview cannot safely process.
  */
-export function ContactForm() {
+export function ContactForm({
+  enabled = false,
+  turnstileSiteKey,
+}: {
+  enabled?: boolean;
+  turnstileSiteKey?: string;
+}) {
+  if (enabled && turnstileSiteKey) {
+    return (
+      <section aria-labelledby="contact-form-title" className="form-card">
+        <p className="eyebrow">Contact SESC</p>
+        <h2 className="section-title" id="contact-form-title">Send a message to the authorised support team.</h2>
+        <p className="page-summary">Please do not include payment credentials, identity-document numbers, or other sensitive information in this form.</p>
+        <ContactSubmissionForm siteKey={turnstileSiteKey} />
+      </section>
+    );
+  }
+
   return (
     <section aria-labelledby="contact-availability-title" className="form-card">
       <p className="eyebrow">Contact availability</p>

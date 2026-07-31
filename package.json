@@ -11,10 +11,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run --configLoader runner",
     "test:watch": "vitest --configLoader runner",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "supabase:verify": "node scripts/verify-supabase-schema.mjs",
+    "supabase:start": "supabase start",
+    "supabase:reset": "supabase db reset",
+    "supabase:seed:local": "node scripts/seed-local-supabase.mjs",
+    "test:rls": "node scripts/test-supabase-rls.mjs",
+    "check:bundle": "node scripts/check-browser-bundle.mjs",
+    "verify:release": "npm run supabase:verify && npm run typecheck && npm run lint && npm test && npm run build && npm run check:bundle"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
@@ -23,7 +30,7 @@
     "@tanstack/react-query": "^5.84.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^0.468.0",
+    "lucide-react": "^0.540.0",
     "next": "^16.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

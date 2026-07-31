@@ -35,6 +35,24 @@ const allSql = [...migrations.values()].join("\n");
 const workflowMigrationName =
   "20260729000001_production_workflow_foundation.sql";
 const workflowSql = migrations.get(workflowMigrationName) ?? "";
+const runtimeSecuritySql = migrations.get(
+  "20260730000000_runtime_security_and_content.sql",
+) ?? "";
+const trustedWorkflowSql = migrations.get(
+  "20260730000001_trusted_public_workflows.sql",
+) ?? "";
+const membershipWorkflowSql = migrations.get(
+  "20260730000002_membership_review_and_document_workflows.sql",
+) ?? "";
+const administrationWorkflowSql = migrations.get(
+  "20260730000003_administration_content_and_invitations.sql",
+) ?? "";
+const paymentSelectionMigrationName =
+  "20260729235959_payment_membership_selection.sql";
+const paymentSelectionSql = migrations.get(paymentSelectionMigrationName) ?? "";
+const privateUploadIntentSql = migrations.get(
+  "20260731000003_private_upload_intents.sql",
+) ?? "";
 
 expect(
   migrations.has("20260729000000_add_application_resubmitted_status.sql"),
@@ -74,6 +92,10 @@ const requiredTables = {
   roleInvitations: "role_invitations",
   auditLogs: "audit_log",
   securityEvents: "security_events",
+  contactEnquiries: "contact_enquiries",
+  contentEntries: "content_entries",
+  rateLimitWindows: "api_rate_limit_windows",
+  paymentWebhookEvents: "payment_webhook_events",
 };
 
 for (const [label, table] of Object.entries(requiredTables)) {
@@ -108,6 +130,10 @@ const rlsTables = [
   "notification_preferences",
   "role_invitations",
   "security_events",
+  "contact_enquiries",
+  "content_entries",
+  "api_rate_limit_windows",
+  "payment_webhook_events",
 ];
 
 for (const table of rlsTables) {
@@ -258,6 +284,100 @@ expect(
       authFoundationSql,
     ),
   "Role invitation tokens are not hashed or invitation RLS is missing.",
+);
+
+expect(
+  runtimeSecuritySql.length > 0 &&
+    /create\s+or\s+replace\s+function\s+public\.current_identity_is_active/i.test(runtimeSecuritySql) &&
+    /account_status\s*=\s*'active'/i.test(runtimeSecuritySql),
+  "Suspended-account database enforcement is missing.",
+);
+expect(
+  /create\s+or\s+replace\s+function\s+public\.consume_rate_limit/i.test(runtimeSecuritySql) &&
+    /grant\s+execute\s+on\s+function\s+public\.consume_rate_limit[\s\S]*?to\s+service_role/i.test(runtimeSecuritySql),
+  "The durable service-only rate-limit RPC is missing.",
+);
+expect(
+  /create\s+or\s+replace\s+function\s+public\.create_contact_enquiry/i.test(trustedWorkflowSql) &&
+    /create\s+or\s+replace\s+function\s+public\.upsert_newsletter_subscription/i.test(trustedWorkflowSql) &&
+    /confirmation_token/i.test(trustedWorkflowSql),
+  "Contact or double-opt-in newsletter workflow RPCs are missing.",
+);
+expect(
+  /from\s+public\.chapters(?:\s+as\s+\w+)?\s+where\s+(?:\w+\.)?id\s*=\s*p_chapter_id\s+and\s+(?:\w+\.)?status\s*=\s*'active'/i.test(
+    trustedWorkflowSql,
+  ),
+  "Membership drafts do not reject inactive or unknown chapters.",
+);
+expect(
+  /server_save_membership_application_draft/i.test(trustedWorkflowSql) &&
+    /server_submit_membership_application/i.test(membershipWorkflowSql) &&
+    /server_review_membership_application/i.test(membershipWorkflowSql) &&
+    /server_review_manual_payment/i.test(membershipWorkflowSql) &&
+    /server_set_membership_status/i.test(membershipWorkflowSql),
+  "Trusted membership, payment, or status workflow RPCs are missing.",
+);
+expect(
+  /p_document_kind\s*=\s*'profile_photo'\s+and\s+p_bucket_id\s*<>\s*'member-private'/i.test(
+    membershipWorkflowSql,
+  ) &&
+    /p_document_kind\s*=\s*'identity_document'\s+and\s+p_bucket_id\s*<>\s*'membership-documents'/i.test(
+      membershipWorkflowSql,
+    ),
+  "Member document kinds are not bound to their canonical private buckets.",
+);
+expect(
+  /create\s+policy\s+"notifications_select_recipient"[\s\S]*?current_identity_is_active/i.test(
+    membershipWorkflowSql,
+  ) &&
+    /create\s+or\s+replace\s+function\s+public\.mark_notification_read[\s\S]*?current_identity_is_active/i.test(
+      membershipWorkflowSql,
+    ) &&
+    /create\s+or\s+replace\s+function\s+public\.mark_all_notifications_read[\s\S]*?current_identity_is_active/i.test(
+      membershipWorkflowSql,
+    ),
+  "Suspended accounts can still read or update notification workflows.",
+);
+
+expect(
+  /server_upsert_content_entry/i.test(administrationWorkflowSql) &&
+    /server_update_contact_enquiry/i.test(administrationWorkflowSql) &&
+    /server_create_role_invitation/i.test(administrationWorkflowSql),
+  "Trusted administration/content/invitation workflow RPCs are missing.",
+);
+expect(
+  /select\s+kind\s+into\s+existing_kind[\s\S]*?for\s+update/i.test(
+    administrationWorkflowSql,
+  ) &&
+    /existing_required_permission/i.test(administrationWorkflowSql),
+  "Content updates do not authorise both the existing and requested content type.",
+);
+
+expect(
+  paymentSelectionSql.length > 0 &&
+    migrationFiles.indexOf(paymentSelectionMigrationName) <
+      migrationFiles.indexOf("20260730000002_membership_review_and_document_workflows.sql"),
+  "Payment membership snapshots are not migrated before membership workflow RPCs.",
+);
+expect(
+  /add\s+column\s+if\s+not\s+exists\s+membership_plan_id/i.test(paymentSelectionSql) &&
+    /add\s+column\s+if\s+not\s+exists\s+chapter_id/i.test(paymentSelectionSql) &&
+    /update\s+public\.payments\s+as\s+payment/i.test(paymentSelectionSql),
+  "Payment membership snapshot columns/backfill are missing.",
+);
+expect(
+  /insert\s+into\s+public\.payments\s*\(\s*application_id,\s*payer_id,\s*membership_plan_id,\s*chapter_id/i.test(membershipWorkflowSql) &&
+    /payment\.membership_plan_id\s*=\s*application_plan_id/i.test(membershipWorkflowSql) &&
+    /payment\.chapter_id\s*=\s*application_chapter_id/i.test(membershipWorkflowSql),
+  "Membership activation is not bound to the payment's original plan and chapter.",
+);
+expect(
+  /create\s+table\s+if\s+not\s+exists\s+public\.private_upload_intents/i.test(privateUploadIntentSql) &&
+    /cleanup_claimed_at/i.test(privateUploadIntentSql) &&
+    /server_create_private_upload_intent/i.test(privateUploadIntentSql) &&
+    /p_upload_intent_id/i.test(privateUploadIntentSql) &&
+    !/delete\s+from\s+storage\.objects/i.test(privateUploadIntentSql),
+  "Private upload intents are missing durable cleanup or incorrectly mutate Storage tables in SQL.",
 );
 
 if (failures.length > 0) {

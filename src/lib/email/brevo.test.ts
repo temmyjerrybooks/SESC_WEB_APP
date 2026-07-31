@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { isBrevoConfigured, sendTransactionalEmail } from "./brevo";
+import { isBrevoConfigured, sendBrevoEmail, sendTransactionalEmail } from "./brevo";
 
 const request = {
   recipientEmail: "member@example.test",
@@ -39,5 +39,30 @@ describe("Brevo transactional adapter", () => {
   it("requires explicit complete configuration", () => {
     expect(isBrevoConfigured({ enabled: true, apiKey: "key", senderEmail: "invalid", senderName: "SESC" })).toBe(false);
     expect(isBrevoConfigured({ enabled: true, apiKey: "key", senderEmail: "notices@example.test", senderName: "SESC" })).toBe(true);
+  });
+
+  it("supports a trusted generic message without exposing provider failures", async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: false });
+
+    await expect(
+      sendBrevoEmail(
+        {
+          recipientEmail: "support@example.test",
+          subject: "Contact request",
+          html: "<p>Validated server content</p>",
+          text: "Validated server content",
+          idempotencyKey: "11111111-1111-4111-8111-111111111111",
+          tags: ["public-contact", "sesc"],
+        },
+        {
+          enabled: true,
+          apiKey: "test-key",
+          senderEmail: "notices@example.test",
+          senderName: "SESC Nigeria",
+        },
+        fetcher,
+      ),
+    ).resolves.toEqual({ status: "rejected" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

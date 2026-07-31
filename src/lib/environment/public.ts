@@ -44,6 +44,33 @@ export type PublicEnvironment = {
   turnstileSiteKey?: string;
 };
 
+/**
+ * Returns an HTTPS origin only when the configured URL is a bare canonical
+ * origin. Authentication and email callbacks must never inherit a path,
+ * credentials, query string, fragment, or insecure scheme from deployment
+ * configuration.
+ */
+export function trustedHttpsSiteOrigin(siteUrl: string | undefined): string | undefined {
+  if (!siteUrl) return undefined;
+
+  try {
+    const parsed = new URL(siteUrl);
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.username ||
+      parsed.password ||
+      parsed.pathname !== "/" ||
+      parsed.search ||
+      parsed.hash
+    ) {
+      return undefined;
+    }
+    return parsed.origin;
+  } catch {
+    return undefined;
+  }
+}
+
 export function readPublicEnvironment(
   environment: EnvironmentInput = process.env,
 ): PublicEnvironment {

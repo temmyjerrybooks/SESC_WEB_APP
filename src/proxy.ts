@@ -1,12 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import {
+  getPortalRoute,
+  isPortalFeatureEnabled,
+} from "@/lib/auth/portal-routing";
+import { evaluateFeatureGates } from "@/lib/environment/gates";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-
-const protectedPrefixes = ["/member", "/executive", "/admin"];
-
-function isProtectedPath(pathname: string) {
-  return protectedPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
-}
 
 function configurationUnavailableResponse(request: NextRequest) {
   const destination = request.nextUrl.clone();
@@ -16,8 +15,17 @@ function configurationUnavailableResponse(request: NextRequest) {
 }
 
 export async function proxy(request: NextRequest) {
-  if (!isProtectedPath(request.nextUrl.pathname)) {
+  const portalRoute = getPortalRoute(request.nextUrl.pathname);
+
+  if (!portalRoute) {
     return NextResponse.next({ request });
+  }
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    !isPortalFeatureEnabled(portalRoute.access, evaluateFeatureGates(process.env))
+  ) {
+    return configurationUnavailableResponse(request);
   }
 
   if (!isSupabaseConfigured()) {

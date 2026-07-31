@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 import { safeRelativePath } from "@/lib/auth/safe-redirect";
 import { createClient } from "@/lib/supabase/client";
 
@@ -45,10 +46,6 @@ const copy: Record<AuthFormMode, { eyebrow: string; title: string; summary: stri
     summary: "Use the link in your email to activate your account. You can request a fresh link below.",
   },
 };
-
-function redirectUrl(path: "/email-verification" | "/reset-password") {
-  return `${window.location.origin}/auth/callback?next=${encodeURIComponent(path)}`;
-}
 
 function safeErrorMessage(error: unknown, action: AuthFormMode): string {
   const message = error instanceof Error ? error.message.toLowerCase() : "";
@@ -168,7 +165,15 @@ function PasswordFields({
   );
 }
 
-export function AuthForm({ enabled, mode }: { enabled: boolean; mode: AuthFormMode }) {
+export function AuthForm({
+  enabled,
+  mode,
+  turnstileSiteKey,
+}: {
+  enabled: boolean;
+  mode: AuthFormMode;
+  turnstileSiteKey?: string;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const configured = enabled;
@@ -192,6 +197,7 @@ export function AuthForm({ enabled, mode }: { enabled: boolean; mode: AuthFormMo
   const [recoveryReady, setRecoveryReady] = useState(mode !== "reset-password");
   const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [verificationComplete, setVerificationComplete] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const content = copy[mode];
   const disabled = !configured || submitting;
   const resetUnavailable = mode === "reset-password" && recoveryChecked && !recoveryReady && !passwordUpdated;
@@ -199,6 +205,9 @@ export function AuthForm({ enabled, mode }: { enabled: boolean; mode: AuthFormMo
     disabled || (mode === "reset-password" && (!recoveryChecked || resetUnavailable || passwordUpdated));
   const requestedDestination = searchParams.get("next");
   const postSignInDestination = safeRelativePath(requestedDestination, "/member");
+  const handleTurnstileToken = useCallback((token: string | null) => {
+    setTurnstileToken(token);
+  }, []);
 
   useEffect(() => {
     if (!configured || (mode !== "reset-password" && mode !== "email-verification")) {
@@ -291,45 +300,52 @@ export function AuthForm({ enabled, mode }: { enabled: boolean; mode: AuthFormMo
       return;
     }
 
+    if (mode !== "reset-password" && (!turnstileSiteKey || !turnstileToken)) {
+      setNotice({
+        tone: "error",
+        message: "Complete the security check before continuing.",
+      });
+      return;
+    }
+
     setSubmitting(true);
     const normalisedEmail = email.trim().toLowerCase();
 
     try {
-      const supabase = createClient();
+      const action = {
+        login: "sign-in",
+        register: "sign-up",
+        "forgot-password": "password-reset",
+        "reset-password": "update-password",
+        "email-verification": "resend-verification",
+      }[mode];
+      const body = mode === "reset-password"
+        ? { password }
+        : {
+            email: normalisedEmail,
+            ...(mode === "login" || mode === "register" ? { password } : {}),
+            ...(mode === "register" && fullName.trim() ? { fullName: fullName.trim() } : {}),
+            turnstileToken,
+          };
+      const response = await fetch(`/api/auth/${action}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(typeof result.message === "string" ? result.message : "Request failed");
+      }
 
       if (mode === "login") {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: normalisedEmail,
-          password,
-        });
-        if (error) {
-          throw error;
-        }
-
-        if (data.session) {
-          router.replace(postSignInDestination);
-          router.refresh();
-        } else {
-          setNotice({ tone: "info", message: "Check your email to finish signing in." });
-        }
+        router.replace(postSignInDestination);
+        router.refresh();
         return;
       }
 
       if (mode === "register") {
-        const { data, error } = await supabase.auth.signUp({
-          email: normalisedEmail,
-          password,
-          options: {
-            emailRedirectTo: redirectUrl("/email-verification"),
-            data: fullName.trim() ? { full_name: fullName.trim() } : undefined,
-          },
-        });
-        if (error) {
-          throw error;
-        }
-
         rememberEmail(normalisedEmail);
-        if (data.session) {
+        if (response.headers.get("x-sesc-auth-session") === "created") {
           router.replace(postSignInDestination);
           router.refresh();
         } else {
@@ -339,13 +355,6 @@ export function AuthForm({ enabled, mode }: { enabled: boolean; mode: AuthFormMo
       }
 
       if (mode === "forgot-password") {
-        const { error } = await supabase.auth.resetPasswordForEmail(normalisedEmail, {
-          redirectTo: redirectUrl("/reset-password"),
-        });
-        if (error) {
-          throw error;
-        }
-
         setNotice({
           tone: "success",
           message: "If an account matches that email address, a password-reset link is on its way.",
@@ -354,12 +363,6 @@ export function AuthForm({ enabled, mode }: { enabled: boolean; mode: AuthFormMo
       }
 
       if (mode === "reset-password") {
-        const { error } = await supabase.auth.updateUser({ password });
-        if (error) {
-          throw error;
-        }
-
-        await supabase.auth.signOut();
         setRecoveryReady(false);
         setPasswordUpdated(true);
         setNotice({
@@ -367,15 +370,6 @@ export function AuthForm({ enabled, mode }: { enabled: boolean; mode: AuthFormMo
           message: "Your password has been updated. Sign in with your new password to continue.",
         });
         return;
-      }
-
-      const { error } = await supabase.auth.resend({
-        type: "signup",
-        email: normalisedEmail,
-        options: { emailRedirectTo: redirectUrl("/email-verification") },
-      });
-      if (error) {
-        throw error;
       }
 
       rememberEmail(normalisedEmail);
@@ -461,6 +455,15 @@ export function AuthForm({ enabled, mode }: { enabled: boolean; mode: AuthFormMo
               {notice.message}
             </div>
           )}
+
+          {mode !== "reset-password" && configured && turnstileSiteKey ? (
+            <TurnstileWidget
+              action={`sesc_${mode.replaceAll("-", "_")}`}
+              disabled={submitting}
+              onToken={handleTurnstileToken}
+              siteKey={turnstileSiteKey}
+            />
+          ) : null}
 
           <div className="button-row full">
             <button

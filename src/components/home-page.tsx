@@ -17,6 +17,9 @@ import {
 import { siteConfig } from "@/config/site";
 import { TopsborgWebsiteLink } from "@/components/topsborg-website-link";
 import { HomeCountdown } from "@/components/home-countdown";
+import { NewsletterSubscriptionForm } from "@/components/newsletter-subscription-form";
+import { isFeatureEnabled } from "@/lib/environment/server";
+import { readPublicEnvironment } from "@/lib/environment/public";
 
 const membershipBenefits = [
   {
@@ -58,6 +61,9 @@ const newsItems = [
 ];
 
 export function HomePage() {
+  const newsletterEnabled = isFeatureEnabled("newsletterSubscriptions");
+  const turnstileSiteKey = readPublicEnvironment().turnstileSiteKey;
+
   return (
     <>
       <section className="home-hero">
@@ -237,14 +243,18 @@ export function HomePage() {
           <div>
             <p className="eyebrow">Stay in the formation</p>
             <h2>Get authorised club updates.</h2>
-            <p>Newsletter delivery will be enabled once the club&apos;s approved mailing configuration is connected.</p>
+            <p>Choose whether to receive authorised club updates. Subscription uses double opt-in and can be changed later.</p>
           </div>
-          <div aria-label="Newsletter availability" className="newsletter-form">
-            <p className="newsletter-form__notice">
-              Email enrolment is not enabled in this preview. Official mailing updates will appear here after approved
-              delivery, consent, and unsubscribe controls are connected.
-            </p>
-          </div>
+          {newsletterEnabled && turnstileSiteKey ? (
+            <NewsletterSubscriptionForm siteKey={turnstileSiteKey} />
+          ) : (
+            <div aria-label="Newsletter availability" className="newsletter-form">
+              <p className="newsletter-form__notice">
+                Email enrolment is not enabled in this preview. Official mailing updates will appear here after approved
+                delivery, consent, and unsubscribe controls are connected.
+              </p>
+            </div>
+          )}
         </div>
       </section>
     </>

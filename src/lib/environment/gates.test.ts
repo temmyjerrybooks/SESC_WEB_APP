@@ -10,12 +10,14 @@ const fullyConfiguredEnvironment = {
   NEXT_PUBLIC_SUPABASE_URL: "https://project.example.test",
   NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key",
   NEXT_PUBLIC_SITE_URL: "https://sesc.example.test",
+  NEXT_PUBLIC_AUTH_ACTIONS_ENABLED: "true",
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: "test-site-key",
   SESC_PREVIEW_SAFE_MODE: "false",
   SESC_AUTHENTICATION_ENABLED: "true",
   SESC_MEMBERSHIP_APPLICATIONS_ENABLED: "true",
   SESC_PRIVATE_DOCUMENT_UPLOADS_ENABLED: "true",
   SESC_MANUAL_PAYMENT_VERIFICATION_ENABLED: "true",
+  SESC_CONTACT_ENQUIRIES_ENABLED: "true",
   SESC_NEWSLETTER_SUBSCRIPTIONS_ENABLED: "true",
   SESC_EMAIL_DELIVERY_ENABLED: "true",
   SESC_MEMBER_PORTAL_ENABLED: "true",
@@ -25,6 +27,10 @@ const fullyConfiguredEnvironment = {
   SESC_ROW_LEVEL_SECURITY_READY: "true",
   SESC_PRIVATE_STORAGE_READY: "true",
   SESC_NEWSLETTER_ABUSE_PROTECTION_READY: "true",
+  SESC_RATE_LIMITING_READY: "true",
+  SESC_TRUSTED_PROXY_HEADERS: "true",
+  SESC_CONTACT_RETENTION_READY: "true",
+  SESC_CONTACT_RECIPIENT: "support@example.test",
   SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key",
   TURNSTILE_SECRET_KEY: "test-turnstile-secret",
   BREVO_API_KEY: "test-brevo-api-key",
@@ -36,7 +42,6 @@ describe("public environment validation", () => {
   it("accepts complete browser-safe Supabase configuration", () => {
     const environment = readPublicEnvironment({
       ...fullyConfiguredEnvironment,
-      NEXT_PUBLIC_AUTH_ACTIONS_ENABLED: "true",
     });
 
     expect(environment.supabase).toEqual({
@@ -98,6 +103,34 @@ describe("server feature gates", () => {
     expect(gates.privateDocumentUploads.missing).toEqual(
       expect.arrayContaining(["supabase-service-role", "private-storage"]),
     );
+    expect(gates.authentication.enabled).toBe(false);
+    expect(gates.authentication.missing).toContain("supabase-service-role");
+  });
+
+  it("does not expose public workflows when proxy identity headers are not explicitly trusted", () => {
+    const gates = evaluateFeatureGates({
+      ...fullyConfiguredEnvironment,
+      SESC_TRUSTED_PROXY_HEADERS: "false",
+    });
+
+    expect(gates.authentication.missing).toContain("trusted-proxy-headers");
+    expect(gates.contactEnquiries.missing).toContain("trusted-proxy-headers");
+    expect(gates.newsletterSubscriptions.missing).toContain("trusted-proxy-headers");
+  });
+
+  it("keeps callback-dependent workflows closed for a non-HTTPS or non-origin site URL", () => {
+    const insecure = evaluateFeatureGates({
+      ...fullyConfiguredEnvironment,
+      NEXT_PUBLIC_SITE_URL: "http://sesc.example.test",
+    });
+    const pathScoped = evaluateFeatureGates({
+      ...fullyConfiguredEnvironment,
+      NEXT_PUBLIC_SITE_URL: "https://sesc.example.test/staging",
+    });
+
+    expect(insecure.authentication.missing).toContain("site-url");
+    expect(insecure.membershipApplications.enabled).toBe(false);
+    expect(pathScoped.authentication.missing).toContain("site-url");
   });
 
   it("reports only availability states in health readiness", () => {

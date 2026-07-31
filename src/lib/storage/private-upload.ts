@@ -17,7 +17,9 @@ export type PrivateUploadInput = {
 
 type ValidationResult = { ok: true; normalizedExtension: string } | { ok: false; reason: string };
 
-const maxBytes = 5 * 1024 * 1024;
+// Server-proxied uploads stay below common serverless request ceilings, leaving
+// a small allowance for multipart framing.
+export const maximumPrivateUploadBytes = 4 * 1024 * 1024;
 const extensionsByKind: Record<PrivateDocumentKind, readonly string[]> = {
   profile_photo: ["jpg", "jpeg", "png", "webp"],
   identity_document: ["jpg", "jpeg", "png", "webp", "pdf"],
@@ -53,7 +55,7 @@ function detectedKind(bytes: Uint8Array | undefined): "jpg" | "png" | "webp" | "
 }
 
 export function validatePrivateUpload(input: PrivateUploadInput): ValidationResult {
-  if (!Number.isFinite(input.size) || input.size <= 0 || input.size > maxBytes) {
+  if (!Number.isFinite(input.size) || input.size <= 0 || input.size > maximumPrivateUploadBytes) {
     return { ok: false, reason: "File size is outside the approved limit." };
   }
 

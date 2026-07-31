@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { DashboardEyebrow, DashboardPanel, DashboardShell } from "@/components/dashboard-shell";
+import { LiveExecutivePortal } from "@/components/live-portals";
 import { requirePortalAccess } from "@/lib/auth/portal-access";
 
 export const metadata: Metadata = {
@@ -79,7 +80,11 @@ function ExecutiveMetric({ label, value, trend, description, icon: Icon, accent 
 }
 
 export default async function ExecutivePage() {
-  await requirePortalAccess("executive", "/executive");
+  const access = await requirePortalAccess("executive", "/executive");
+  if (access.mode === "authenticated") {
+    return <LiveExecutivePortal userId={access.userId} />;
+  }
+
   return (
     <DashboardShell role="executive">
       <div className="space-y-6 sm:space-y-8">

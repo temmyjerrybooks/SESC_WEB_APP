@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { createPrivateObjectPath, validatePrivateUpload } from "./private-upload";
+import {
+  createPrivateObjectPath,
+  maximumPrivateUploadBytes,
+  validatePrivateUpload,
+} from "./private-upload";
 
 describe("private upload validation", () => {
   it("accepts an approved image with matching magic bytes", () => {
@@ -25,9 +29,19 @@ describe("private upload validation", () => {
       kind: "payment_receipt",
       fileName: "receipt.pdf",
       mimeType: "application/pdf",
-      size: 6 * 1024 * 1024,
+      size: maximumPrivateUploadBytes + 1,
     }).ok).toBe(false);
     expect(() => createPrivateObjectPath("not-a-uuid", "identity_document", "11111111-1111-4111-8111-111111111111")).toThrow();
+  });
+
+  it("accepts exactly four mebibytes and rejects a larger server-proxied upload", () => {
+    expect(validatePrivateUpload({
+      kind: "payment_receipt",
+      fileName: "receipt.pdf",
+      mimeType: "application/pdf",
+      size: maximumPrivateUploadBytes,
+    }).ok).toBe(true);
+    expect(maximumPrivateUploadBytes).toBe(4 * 1024 * 1024);
   });
 
   it("uses user-owned, UUID-randomised private storage paths", () => {

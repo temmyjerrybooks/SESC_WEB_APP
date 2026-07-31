@@ -5,9 +5,8 @@
 -- authorised for public publication. No profiles, auth.users records,
 -- applications, payments, memberships, roles, or notifications are seeded.
 --
--- The current schema has no membership-plans or general reference-data table.
--- Membership category codes live on records that require an authenticated
--- profile, so no membership-plan rows can be safely seeded here.
+-- Membership plans are synthetic local reference data only. They do not
+-- establish real dues, eligibility, or public commercial terms.
 
 begin;
 
@@ -57,5 +56,30 @@ where chapter.slug in (
   'development-international-chapter'
 )
 on conflict (chapter_id) where kind = 'chapter' do nothing;
+
+insert into public.membership_plans (
+  code, name, description, category_code, amount_minor, currency, term_months, status, is_public
+)
+values
+  (
+    'local-standard',
+    'Local standard supporter - synthetic test plan',
+    'Disposable local-development plan for workflow verification only.',
+    'standard',
+    1000,
+    'NGN',
+    12,
+    'active',
+    true
+  )
+on conflict (code) do update
+set
+  name = excluded.name,
+  description = excluded.description,
+  amount_minor = excluded.amount_minor,
+  currency = excluded.currency,
+  term_months = excluded.term_months,
+  status = excluded.status,
+  is_public = excluded.is_public;
 
 commit;

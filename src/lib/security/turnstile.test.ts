@@ -26,4 +26,22 @@ describe("Turnstile verification", () => {
       expect.objectContaining({ method: "POST" }),
     );
   });
+
+  it("requires the expected action and stable hostname when configured", async () => {
+    const expectation = {
+      expectedAction: "sesc_contact",
+      expectedHostname: "preview.example.test",
+    };
+    const matching = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, action: "sesc_contact", hostname: "preview.example.test" }),
+    });
+    const wrongAction = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, action: "sesc_newsletter", hostname: "preview.example.test" }),
+    });
+
+    await expect(verifyTurnstile("token", "secret", undefined, expectation, matching)).resolves.toEqual({ status: "passed" });
+    await expect(verifyTurnstile("token", "secret", undefined, expectation, wrongAction)).resolves.toEqual({ status: "failed" });
+  });
 });
