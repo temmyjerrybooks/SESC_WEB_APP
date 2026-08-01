@@ -2,7 +2,7 @@
 
 The digital platform for the Super Eagles Supporters Club of Nigeria (SESC). It is being designed and developed with [TOPSBORG Technologies Limited](https://topsborgtech.com) as the technology implementation partner under the stated Goods/Services Sponsorship Agreement. The approved public acknowledgement and link-governance rules are recorded in [the TOPSBORG partnership guide](docs/TOPSBORG_PARTNERSHIP.md).
 
-This repository is an in-progress production foundation: it contains the public experience, membership application-readiness UI, dashboard previews, Supabase security migrations, CI, typed fail-closed feature gates, and security controls. Membership and newsletter endpoints deliberately reject submissions before reading data, so the preview cannot be used to collect real membership, payment, identity-document, or subscriber information before the Supabase, storage, authentication, review, rate-limit, and email integrations below are configured and verified.
+This repository is an in-progress production foundation: it contains the public experience, guarded portal previews, server-owned authentication actions, trusted workflow route foundations, Supabase security migrations, CI, typed fail-closed feature gates, and security controls. Protected routes reject requests before reading personal data while their gates are unavailable, so a preview cannot collect real membership, payment, identity-document, contact, or subscriber information before the documented Supabase, storage, authentication, review, rate-limit, Turnstile, and email evidence exists.
 
 ## Stack
 
@@ -10,7 +10,7 @@ This repository is an in-progress production foundation: it contains the public 
 - Tailwind CSS 4 plus project CSS tokens and accessible UI components
 - Zod validation ready for a protected membership-submission workflow
 - Supabase Auth, PostgreSQL, Storage, RLS, and scoped RBAC architecture
-- Server-side feature gates, safe authentication callbacks, invitation schema, and private-upload validation
+- Server-side feature gates, safe authentication callbacks, trusted service-role workflow RPCs, scoped invitations, durable rate-limit contracts, and private-upload validation
 - Vitest, Testing Library, and Playwright for automated checks
 - GitHub Actions CI, Dependabot monitoring, and repository-hygiene checks
 
@@ -18,7 +18,7 @@ This repository is an in-progress production foundation: it contains the public 
 
 - Node.js 22 or later
 - npm 10 or later
-- A Supabase project and the Supabase CLI when working with the database
+- Docker Desktop with a reachable daemon and the Supabase CLI when working with a live local database
 - Optional accounts for Brevo, Cloudflare Turnstile, Sentry, Paystack, and a deployment provider
 
 ## Local installation
@@ -44,10 +44,11 @@ Copy `docs/environment.example` to an untracked `.env.local`, then set the value
 | `NEXT_PUBLIC_AUTH_ACTIONS_ENABLED` | Account actions are formally approved | Necessary UI setting, but insufficient on its own; the server authentication gate must also be enabled after review. |
 | `SUPABASE_SERVICE_ROLE_KEY` | A server-only privileged action is implemented | Never expose it to a client component, log, or public variable. |
 | `NEXT_PUBLIC_SITE_URL` | Deployed | Set to the canonical HTTPS origin. |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` | Public-form bot protection is enabled | Configure matching Cloudflare hostnames. |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` | Authentication or a public form is enabled | Configure matching Cloudflare hostnames; the secret is server-only. |
 | `BREVO_API_KEY`, `BREVO_SENDER_ADDRESS`, `BREVO_SENDER_NAME` | Transactional or marketing email delivery is approved | Requires a verified sender/domain, preference controls, and a server-side delivery operation. |
 | `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` | Sentry monitoring is enabled | Use separate project settings for browser and server telemetry as required. |
-| `PAYSTACK_SECRET_KEY` and `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | The optional Paystack adapter is enabled | Keep disabled until the club approves its use. |
+| `SESC_*_ENABLED` and `SESC_*_READY` | Any protected capability is enabled | Literal deployment gates. Keep every one false until its migration, RLS, storage, abuse-prevention, and operating evidence is accepted. |
+| `PAYSTACK_SECRET_KEY`, `PAYSTACK_WEBHOOK_SECRET`, and `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` | A separately approved Paystack release exists | Keep blank and disabled; no charging or webhook endpoint is enabled by this foundation. |
 
 Every sensitive feature is unavailable by default. Supplying a key alone does not activate email, Paystack, Turnstile, uploads, membership, payments, newsletters, or portal data access. See [production readiness](docs/PRODUCTION_READINESS.md).
 
@@ -60,7 +61,11 @@ For a disposable local Supabase project:
 ```powershell
 supabase start
 supabase db reset
+npm run supabase:seed:local
+npm run test:rls
 ```
+
+`npm run supabase:seed:local` and `npm run test:rls` are deliberately guarded for disposable local data. They require a reachable local stack and synthetic `.test` identities. Static verification is useful, but it is not evidence that migrations or RLS have run in a live database.
 
 For a reviewed remote project:
 
@@ -82,11 +87,13 @@ npm run test
 npm run test:e2e
 npm run build
 npm run start
+npm run supabase:verify
+npm run check:bundle
+npm run verify:release
 node scripts/check-repository-hygiene.mjs
-node scripts/verify-supabase-schema.mjs
 ```
 
-`npm run test:e2e` starts the local development server automatically unless `PLAYWRIGHT_BASE_URL` targets an already-running safe test environment. Install Playwright browsers once if prompted:
+`npm run test:e2e` starts a local server automatically unless `PLAYWRIGHT_BASE_URL` targets an already-running safe test environment. CI runs the smoke suite against a production build. Install Playwright browsers once if prompted:
 
 ```powershell
 npx playwright install
@@ -113,11 +120,11 @@ The initial schema supports visitor, applicant, member, chapter, national, opera
 
 Before public launch or accepting real personal data, an authorised operator must provide and configure:
 
-- A Supabase production project, Auth redirect URLs, private Storage buckets, migration/RLS evidence, and the first controlled super-administrator bootstrap process. Keep Auth invite-only (or disable public signup and email delivery) until approved account-operation controls are in place.
+- A Supabase production project, Auth redirect URLs, private Storage buckets, applied-migration/RLS evidence, a controlled first super-administrator bootstrap, and synthetic role/RLS test evidence. Keep Auth invite-only (or disable public signup and email delivery) until approved account-operation controls are in place.
 - Approved SESC legal policies, public contacts, chapter/leadership records, brand assets, and official manual bank-transfer instructions.
 - A deployed HTTPS domain and its canonical `NEXT_PUBLIC_SITE_URL` value.
 - A delivery provider and approved sender identity for email, plus templates, delivery-event ownership, and unsubscribe handling for marketing email.
-- Cloudflare Turnstile and production-safe rate-limit configuration if public forms are opened.
+- Cloudflare Turnstile, a trusted client-address policy, and the durable Supabase-RPC rate-limit configuration if authentication or public forms are opened.
 - A monitoring DSN and alert ownership if Sentry is enabled.
 - Verified RLS, privilege-escalation, file-upload, cross-account, cross-chapter, suspension, and role-invitation tests using non-production test data.
 
@@ -138,6 +145,10 @@ See [docs/CI.md](docs/CI.md), [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_REA
 - [Administrator guide](docs/ADMIN_GUIDE.md)
 - [Member guide](docs/MEMBER_GUIDE.md)
 - [Testing](docs/TESTING.md)
+- [Local and staging setup](docs/SETUP.md)
+- [Real-life testing](docs/REAL_LIFE_TESTING.md)
+- [Release checklist](docs/RELEASE_CHECKLIST.md)
+- [Candidate release evidence](docs/RELEASE_EVIDENCE.md)
 - [CI](docs/CI.md)
 - [Supabase setup](docs/SUPABASE_SETUP.md)
 - [Authentication](docs/AUTHENTICATION.md)

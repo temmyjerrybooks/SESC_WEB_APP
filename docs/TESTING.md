@@ -22,12 +22,29 @@ npx playwright install
 
 | Layer | Tool | Current purpose |
 | --- | --- | --- |
-| Unit/validation | Vitest + Testing Library | Validates the membership schema's accepted and rejected inputs. |
-| Browser smoke | Playwright | Starts a local server, checks the public home route, and checks the health endpoint. |
+| Unit/validation | Vitest + Testing Library | Validates feature-gate, portal-routing, auth, public-workflow, email, and membership/server-workflow contracts. |
+| Browser smoke | Playwright | Runs public-route, safe disabled-workflow, portal-gate, TOPSBORG, responsive, and health checks. |
 | Type safety | TypeScript | Strict compile-time checks through `npm run typecheck`. |
 | Static quality | ESLint | Next.js/TypeScript linting through `npm run lint`. |
 
-Current tests are intentionally small safety scaffolding, not evidence that every production workflow is complete. Add coverage with each feature; do not rely on smoke tests for authorisation, payment, or data-security confidence.
+Automated checks cover important fail-closed contracts, not evidence that every live workflow is complete. Do not rely on unit or smoke tests for executed Supabase migrations, external provider delivery, storage controls, or production authorisation confidence.
+
+## Latest local release evidence
+
+On 31 July 2026, the current feature-branch worktree passed:
+
+- `npm run supabase:verify` — 15 migrations checked statically.
+- `npm run typecheck` and `npm run lint`.
+- `npm test -- --pool=forks --maxWorkers=1` — 29 files and 84 tests.
+- `npm run build` — optimized production build with 63 routes.
+- `npm run check:bundle` — 23 static browser assets with no sensitive-pattern finding.
+- Playwright against a manually owned optimized local server — 10 passed and 1 intentional development-portal skip.
+
+On this Windows workstation, Playwright's managed `webServer` may leave its
+child process running after all assertions complete. For a bounded
+production-mode run, start an explicit local server, set
+`PLAYWRIGHT_BASE_URL`, run Playwright, and stop that exact local process. This
+is a runner-lifecycle workaround, not a substitute for hosted Preview testing.
 
 ## Vitest
 

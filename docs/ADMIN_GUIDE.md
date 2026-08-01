@@ -2,9 +2,9 @@
 
 ## Important current limitation
 
-`/admin` is a static, development-safe interface preview. It is not authenticated operational software and is not connected to real users, applications, payments, content, exports, audit records, or role changes. Do not enter real member data there or use it as evidence that administration is live.
+`/admin` is a development-safe interface preview while the admin portal gate is unavailable. Server-side operations now have guarded routes/RPCs for profile updates, content changes, contact-enquiry status, membership/payment review, membership status, and role invitations, but no live Supabase/Auth/RLS validation has been recorded. Do not enter real member data or treat the preview as evidence that administration is live.
 
-The Supabase migrations define the intended roles, permissions, scopes, and database guardrails. The secure server routes and review interfaces that operate those controls still need to be connected and tested.
+The Supabase migrations define roles, permissions, scopes, account-state checks, audit records, and guarded state transitions. The server routes use those contracts, but their storage, Auth, RLS, and review UI behavior must be tested with synthetic identities before any gate is enabled.
 
 ## Administrator responsibilities
 
@@ -47,7 +47,7 @@ Do not seed, self-register, or change a profile field to create a super-administ
 
 ## Intended operational workflows
 
-The following describes the target system once secure administration routes are implemented. It is not a claim that these controls are live today.
+The following describes the operating model for the guarded administration foundations. It is not a claim that the controls are live until a non-production Supabase exercise records the required evidence.
 
 ### Membership and payment review
 

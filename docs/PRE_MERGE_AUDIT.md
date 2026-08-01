@@ -178,3 +178,9 @@ unimplemented or unverified.
 foundation and preserves fail-closed behavior, but it does not yet have the
 live Supabase/RLS, provider, dependency, CI, and end-to-end workflow evidence
 required for a production merge.
+
+## 30 July 2026 implementation addendum
+
+The working branch subsequently added guarded server-owned routes and service-role-only RPC contracts for authentication actions, public contact/newsletter collection and confirmation, membership drafting/submission, private document registration, application/payment review, membership status, profile/content/contact updates, and role invitations. It also added a durable Supabase-RPC rate-limit contract, Turnstile integration paths, contact-retention gating, local synthetic seed/RLS harnesses, a browser-bundle scan, and updated operational documentation.
+
+These additions supersede the earlier statement that no trusted server operation exists. They do **not** supersede the audit's release decision: no local Docker/Supabase runtime, remote staging project, provider credential, private-storage exercise, live Auth exercise, or online npm audit has been completed in this workspace. The feature branch and PR must remain unmerged while those external prerequisites and the exact candidate-revision CI evidence are outstanding.

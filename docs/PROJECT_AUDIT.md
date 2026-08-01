@@ -3,6 +3,12 @@
 **Audit date:** 27 July 2026
 **Workspace:** Local SESC Web App workspace (path intentionally omitted)
 
+## Current implementation update — 30 July 2026
+
+The visual-export assessment below is retained as historical discovery evidence. The workspace is now a typed Next.js application with public routes, safe portal previews, server-owned account actions, feature gates, Supabase migrations/RLS, trusted service-role workflow RPC foundations, private-upload validation, rate-limit/Turnstile paths, email templates/Brevo adapter foundations, and CI.
+
+This update does **not** certify production readiness. The Docker/Supabase runtime is unavailable in the present workspace, so migrations, seed/reset, live RLS, Auth, private Storage, Turnstile, Brevo, payment-provider, and staging deployment behavior remain unverified. Protected gates must stay disabled until [REAL_LIFE_TESTING.md](REAL_LIFE_TESTING.md) and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) have evidence from synthetic non-production testing.
+
 ## Executive summary
 
 The supplied workspace is a curated set of visual design exports rather than an

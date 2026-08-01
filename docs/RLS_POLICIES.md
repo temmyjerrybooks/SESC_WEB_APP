@@ -30,7 +30,7 @@ Finance permission no longer grants full membership application access. The fina
 
 ## Storage
 
-member-private, payment-receipts, and membership-documents are private. Metadata requires UUID-randomised paths, approved MIME/extension combinations, checksums, and a five-megabyte limit. Future signed URLs must be generated only after a server-side permission check, must expire quickly, and must not reveal objects from an unrelated application, chapter, or user.
+member-private, payment-receipts, and membership-documents are private. Metadata requires UUID-randomised paths, approved MIME/extension combinations, checksums, and a four-megabyte server-proxied upload limit. Signed read URLs must be generated only after a server-side permission check, must expire quickly, and must not reveal objects from an unrelated application, chapter, or user.
 
 ## Required live verification
 

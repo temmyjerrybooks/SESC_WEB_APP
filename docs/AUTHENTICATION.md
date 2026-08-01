@@ -8,12 +8,14 @@ The auth callback at /auth/callback exchanges a one-time code on the server and 
 
 ## Required configuration before enabling
 
-1. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.
-2. Set SESC_PREVIEW_SAFE_MODE=false only in the intended controlled environment.
-3. Apply and verify every migration, then set SESC_DATABASE_MIGRATIONS_READY=true and SESC_ROW_LEVEL_SECURITY_READY=true only after evidence exists.
-4. Set SESC_AUTHENTICATION_ENABLED=true and NEXT_PUBLIC_AUTH_ACTIONS_ENABLED=true after a security owner approves Auth settings.
-5. In Supabase Auth, configure only approved HTTPS redirect URLs for /auth/callback, /email-verification, and /reset-password.
-6. Keep public sign-up disabled or invite-only until approved verification, sender, rate-limit, abuse, and support controls are operating.
+1. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY, plus the server-only SUPABASE_SERVICE_ROLE_KEY. Account actions use the latter only for durable server-owned rate limiting; never expose it as a NEXT_PUBLIC_ value.
+2. Set NEXT_PUBLIC_SITE_URL to the exact stable HTTPS origin for the controlled environment. A changing pull-request URL is not suitable for callback or reset links.
+3. Set SESC_PREVIEW_SAFE_MODE=false only in an approved isolated Preview-as-staging environment; ordinary previews remain fail-closed.
+4. Apply and verify every migration, then set SESC_DATABASE_MIGRATIONS_READY=true and SESC_ROW_LEVEL_SECURITY_READY=true only after evidence exists.
+5. Configure both NEXT_PUBLIC_TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY, then set SESC_RATE_LIMITING_READY=true only after durable rate-limit behaviour has been verified.
+6. Set SESC_AUTHENTICATION_ENABLED=true and NEXT_PUBLIC_AUTH_ACTIONS_ENABLED=true after a security owner approves Auth settings.
+7. In Supabase Auth, configure only approved HTTPS redirect URLs for /auth/callback, /email-verification, and /reset-password.
+8. Keep public sign-up disabled or invite-only until approved verification, sender, rate-limit, abuse, and support controls are operating.
 
 ## Enforcement model
 

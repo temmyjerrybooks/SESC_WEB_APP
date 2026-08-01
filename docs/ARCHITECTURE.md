@@ -4,7 +4,7 @@
 
 SESC is a Next.js App Router platform for public supporter content, membership, chapter operations, and authorised administration. The repository establishes the UI, validation, security model, and Supabase migrations needed for that platform.
 
-The public site is usable as a development preview. Membership and newsletter endpoints deliberately reject submissions before reading a request body, so the preview cannot persist applications, accept files, collect payment or identity evidence, activate memberships, or subscribe email addresses. The `/member`, `/executive`, and `/admin` routes are also development-safe previews, not live operational portals. Do not process real personal data until the missing integrations are complete and tested.
+The public site is usable as a development preview. Trusted server foundations now exist for account actions, contact and newsletter collection, membership draft/submission, document registration, review, profile/content/contact administration, and invitations. Their gates are closed by default; unavailable public workflows reject before reading submitted data. The `/member`, `/executive`, and `/admin` routes remain development-safe previews until Supabase Auth, RLS, and role evidence has been validated in a non-production environment. Do not process real personal data until the required external integrations are configured and tested.
 
 ## System overview
 
@@ -16,9 +16,9 @@ flowchart LR
   Routes --> Validation[Zod validation and origin/rate checks]
   Routes --> Supabase[Supabase Auth, PostgreSQL, Storage]
   Supabase --> RLS[PostgreSQL RLS and scoped RBAC]
-  Routes --> Email[Brevo adapter - not yet wired]
+  Routes --> Email[Brevo API adapter - gated]
   Routes --> Monitoring[Sentry adapter - not yet wired]
-  Browser --> Turnstile[Cloudflare Turnstile - not yet wired]
+  Browser --> Turnstile[Cloudflare Turnstile widget and server verification - gated]
 ```
 
 ## Application layers
@@ -40,7 +40,7 @@ Only public Supabase URL and anonymous key may reach browser code. Browser-side 
 
 ### Next.js server
 
-Route handlers and server actions must validate request data, authenticate the user, check the relevant permission and scope, and return safe errors. The membership handler currently rejects requests before body parsing; it must not be enabled until its authenticated persistence, private upload, review, and retention workflow is complete.
+Route handlers and server actions validate request data, authenticate the user, check the relevant permission and scope, and return safe errors. Membership, contact, newsletter, and account actions fail closed before accepting protected data when their gates are unavailable. Enabling a gate still requires the associated persistence, private upload, review, retention, Turnstile, rate-limit, and staging evidence.
 
 ### Supabase
 
@@ -48,7 +48,7 @@ Supabase Auth represents identity. PostgreSQL roles, `user_roles`, `access_scope
 
 ### Storage
 
-Identity documents and payment receipts belong in private buckets and UUID-prefixed paths. A server endpoint should validate file size, MIME type, ownership, and authorisation before issuing short-lived signed URLs. Public buckets must never contain member evidence.
+Identity documents and payment receipts belong in private buckets and UUID-prefixed paths. Upload bytes are server-proxied through a short-lived, service-authorised intent; the server validates size, MIME type, magic bytes, ownership, checksum, opaque path, and authorisation before database registration. Any signed read URL remains a short-lived, server-authorised operation. Public buckets must never contain member evidence.
 
 ## Request flows
 
@@ -66,7 +66,7 @@ Public routes render typed content from `src/data/site-content.ts` today. A futu
 6. An approved payment can lead to membership issuance; database triggers and RLS enforce the transitions.
 7. The public verifier exposes only safe active-card information.
 
-The migrations implement the data model and guardrails for this flow; the application routes and authenticated review UI still need to be connected to it.
+The migrations and server route/RPC foundations implement guarded contracts for this flow. They have not yet been proven by live Supabase/Auth/Storage/RLS integration tests, so the gates remain disabled.
 
 ## Identity and roles
 
@@ -79,8 +79,8 @@ The first `super_administrator` is deliberately not self-assignable. Bootstrap i
 | Integration | Required for | Current repository state |
 | --- | --- | --- |
 | Supabase | Authenticated features, persistence, RLS, Storage | Schema and helpers exist; production project/configuration is still required. |
-| Brevo | Email delivery | API key is represented in `docs/environment.example`; no delivery adapter is implemented. |
-| Cloudflare Turnstile | Public-form bot protection | Variables are represented; server verification is not implemented. |
+| Brevo | Email delivery | Server-only API adapter and templates exist; credentials, approved sender, staging delivery evidence, and the email gate are still required. |
+| Cloudflare Turnstile | Public-form bot protection | Browser widget and server verification path exist; hostname keys and staging abuse evidence are still required. |
 | Sentry | Error monitoring | Variables are represented; SDK/configuration is not implemented. |
 | Paystack | Optional electronic payments | Variables are represented; adapter is intentionally disabled/not implemented. |
 | Hosting/DNS | Public deployment | No provider-specific deployment adapter is committed. |
