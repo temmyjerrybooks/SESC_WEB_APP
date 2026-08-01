@@ -1,0 +1,89 @@
+# Copy this template to an untracked .env.local file before configuring a local
+# environment. Do not place real credentials in this repository.
+#
+# Local development uses a disposable Supabase project and keeps every
+# production-ready gate false. Preview uses isolated non-production data.
+# Production uses deployment-secret storage and an approved release record.
+
+# Public browser-safe configuration. These are not secrets, but they still
+# require environment-specific review and Supabase RLS must remain enabled.
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+# Use a stable HTTPS staging alias for a controlled Preview-as-staging test;
+# do not use a changing pull-request deployment URL for Auth or email links.
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+# Necessary but not sufficient: the server authentication gate must also pass.
+NEXT_PUBLIC_AUTH_ACTIONS_ENABLED=false
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+NEXT_PUBLIC_SENTRY_DSN=
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+
+# Server-only Supabase configuration. Never prefix secrets with NEXT_PUBLIC_.
+SUPABASE_SERVICE_ROLE_KEY=
+# Upload paths use the fixed canonical buckets member-private,
+# payment-receipts, and membership-documents. Provision those names in
+# Supabase; runtime bucket overrides are intentionally unsupported.
+
+# Server-only Brevo configuration. The implemented delivery adapter uses the
+# API key only; SMTP settings remain reserved for a future reviewed adapter.
+BREVO_API_KEY=
+BREVO_SMTP_HOST=
+BREVO_SMTP_PORT=
+BREVO_SMTP_USERNAME=
+BREVO_SMTP_PASSWORD=
+BREVO_SENDER_ADDRESS=
+BREVO_SENDER_NAME=SESC Nigeria
+
+# Server-only application, abuse-prevention, and optional monitoring values.
+TURNSTILE_SECRET_KEY=
+SENTRY_DSN=
+FIREBASE_ADMIN_PROJECT_ID=
+FIREBASE_ADMIN_CLIENT_EMAIL=
+FIREBASE_ADMIN_PRIVATE_KEY=
+SESC_CONTACT_RECIPIENT=
+SESC_SPONSORSHIP_CONTACT=
+# Retention approval is required before contact data can be accepted.
+SESC_CONTACT_RETENTION_READY=false
+# Durable Supabase-RPC rate limiting. Keep values conservative and review
+# them with the support team before enabling public forms.
+SESC_PUBLIC_FORMS_RATE_LIMIT_MAX_ATTEMPTS=5
+SESC_PUBLIC_FORMS_RATE_LIMIT_WINDOW_SECONDS=3600
+
+# Fail-closed readiness controls. Keep these false in local development, CI,
+# preview, and production until their documented evidence is complete. They
+# must be deployment settings, never query parameters, cookies, or local storage.
+SESC_PREVIEW_SAFE_MODE=true
+SESC_DATABASE_MIGRATIONS_READY=false
+SESC_ROW_LEVEL_SECURITY_READY=false
+SESC_PRIVATE_STORAGE_READY=false
+SESC_NEWSLETTER_ABUSE_PROTECTION_READY=false
+SESC_RATE_LIMITING_READY=false
+# Set true only in a trusted Vercel/edge deployment after verifying its
+# forwarded-client-IP semantics. Public forms fail closed when this is false.
+SESC_TRUSTED_PROXY_HEADERS=false
+SESC_AUTHENTICATION_ENABLED=false
+SESC_MEMBERSHIP_APPLICATIONS_ENABLED=false
+SESC_PRIVATE_DOCUMENT_UPLOADS_ENABLED=false
+SESC_MANUAL_PAYMENT_VERIFICATION_ENABLED=false
+SESC_CONTACT_ENQUIRIES_ENABLED=false
+SESC_NEWSLETTER_SUBSCRIPTIONS_ENABLED=false
+SESC_EMAIL_DELIVERY_ENABLED=false
+SESC_MEMBER_PORTAL_ENABLED=false
+SESC_EXECUTIVE_PORTAL_ENABLED=false
+SESC_ADMIN_PORTAL_ENABLED=false
+
+# Synthetic RLS harness only. Supply these transiently in a secure terminal
+# when seeding an isolated disposable database; never configure them in
+# Vercel or commit their values.
+SESC_LOCAL_TEST_PASSWORD=
+SESC_ALLOW_DISPOSABLE_SUPABASE_SEED=false
+
+# The optional Paystack adapter remains disabled pending a separate approved
+# payment/webhook release. Do not add live keys to this repository.
+PAYSTACK_SECRET_KEY=
+PAYSTACK_WEBHOOK_SECRET=
+NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=

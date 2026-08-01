@@ -1,0 +1,12 @@
+# Local Supabase configuration only. It contains no project URL, database
+# connection string, anonymous key, service-role key, or production identity.
+project_id = "sesc-web-app"
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = [
+  "http://127.0.0.1:3000/auth/callback",
+  "http://127.0.0.1:3000/email-verification",
+  "http://127.0.0.1:3000/reset-password",
+]

@@ -17,7 +17,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const results = searchPublicContent(query);
 
   return (
-    <main>
+    <div>
       <PageHero content={searchPage}>
         <SearchForm initialQuery={query} />
       </PageHero>
@@ -47,6 +47,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           )}
         </div>
       </section>
-    </main>
+    </div>
   );
 }

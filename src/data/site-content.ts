@@ -481,13 +481,13 @@ export const partners: readonly DirectoryEntry[] = [
     summary:
       "Technology implementation partner for the SESC web platform under a Goods/Services Sponsorship Agreement.",
     body: [
-      "TOPSBORG Technologies Limited is supporting the platform's design and development as the official technology implementation partner under the stated Goods/Services Sponsorship Agreement.",
-      "This editable partnership page is intentionally limited to the approved positioning. Any company profile, logo, website, contact information, dates or additional service claims must be supplied and approved before publication.",
+      "TOPSBORG Technologies Limited designs and develops the SESC digital platform as the official technology implementation partner under the stated Goods/Services Sponsorship Agreement.",
+      "The approved partnership positioning covers the platform's responsive public and portal foundation, membership-management enablement, clearer digital communication, administrative efficiency, and secure, scalable long-term digital growth. It does not imply that TOPSBORG owns, operates or controls SESC.",
     ],
     facts: [
       { label: "Partnership title", value: "Official technology implementation partner" },
       { label: "Agreement", value: "Goods/Services Sponsorship Agreement" },
-      { label: "Public website", value: "Not supplied" },
+      { label: "Public website", value: "Verified destination shown below" },
       { label: "Logo asset", value: "Awaiting approved upload" },
     ],
     badge: "Technology partner",
