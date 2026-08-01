@@ -119,9 +119,10 @@ export function managedNewsDirectoryEntry(entry: ManagedNewsEntry): DirectoryEnt
 export function mergeManagedNewsWithFallback(
   managed: readonly ManagedNewsEntry[],
   fallback: readonly DirectoryEntry[],
+  now = new Date(),
 ): DirectoryEntry[] {
   const published = managed
-    .filter((entry) => isPubliclyVisibleNews(entry))
+    .filter((entry) => isPubliclyVisibleNews(entry, now))
     .sort((left, right) => Date.parse(right.publicationAt ?? "") - Date.parse(left.publicationAt ?? ""));
   const managedEntries = published.map(managedNewsDirectoryEntry);
   const managedSlugs = new Set(managedEntries.map((entry) => entry.slug));

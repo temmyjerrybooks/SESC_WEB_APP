@@ -60,7 +60,7 @@ describe("managed news content", () => {
     expect(isPubliclyVisibleNews(draft!, now)).toBe(false);
     expect(isPubliclyVisibleNews(future!, now)).toBe(false);
     expect(isPubliclyVisibleNews(expired!, now)).toBe(false);
-    expect(mergeManagedNewsWithFallback([draft!, future!, expired!], fallback)).toEqual(fallback);
+    expect(mergeManagedNewsWithFallback([draft!, future!, expired!], fallback, now)).toEqual(fallback);
   });
 
   it("places valid managed articles before the static fallback and replaces duplicate slugs", () => {

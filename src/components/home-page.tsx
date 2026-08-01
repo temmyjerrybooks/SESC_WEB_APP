@@ -8,11 +8,9 @@ import {
   Globe2,
   HandHeart,
   Newspaper,
-  ShieldCheck,
   Sparkles,
   Ticket,
   Trophy,
-  UsersRound,
 } from "lucide-react";
 import { siteConfig } from "@/config/site";
 import { TopsborgWebsiteLink } from "@/components/topsborg-website-link";
@@ -70,30 +68,22 @@ export function HomePage() {
         <div aria-hidden="true" className="home-hero__stadium" />
         <div aria-hidden="true" className="home-hero__slash" />
         <div className="home-hero__content page-shell">
-          <p className="eyebrow">Official digital headquarters</p>
           <h1>
-            The voice behind <span>the Eagles.</span>
+            <span className="home-hero__title-line">The voice behind</span>
+            <span className="home-hero__title-line home-hero__title-line--accent">the Eagles</span>
           </h1>
           <p className="home-hero__copy">
-            A new home for supporters who carry Nigerian football in their hearts — connecting people, chapters,
-            matchdays and meaningful community action.
+            Uniting millions of passionate Nigerians in unwavering support of our national football teams. Feel the roar,
+            live the passion.
           </p>
           <div className="button-row">
             <Link className="button button--primary" href="/membership">
-              Explore membership <ArrowRight size={16} />
+              Become a Member
             </Link>
             <Link className="button button--secondary" href="/about">
-              Discover the Club
+              Explore the Club
             </Link>
           </div>
-          <div className="home-hero__trust">
-            <span><ShieldCheck size={17} /> Secure, reviewed membership</span>
-            <span><UsersRound size={17} /> Built for local &amp; global chapters</span>
-          </div>
-        </div>
-        <div className="home-hero__signal" aria-hidden="true">
-          <span />
-          <p>Scroll to explore</p>
         </div>
       </section>
 

@@ -8,8 +8,12 @@ test("public home page exposes the primary membership route", async ({ page }) =
     page.getByRole("heading", { name: /The voice behind the Eagles/i }),
   ).toBeVisible();
   await expect(
-    page.locator(".home-hero").getByRole("link", { name: "Explore membership" }),
+    page.locator(".home-hero").getByRole("link", { name: "Become a Member" }),
   ).toBeVisible();
+  await expect(page.locator(".home-hero")).toHaveCSS("text-align", "center");
+  await expect(page.locator(".home-hero__stadium")).toHaveCSS("z-index", "0");
+  await expect(page.locator(".home-hero h1")).toHaveCSS("font-family", /Sora/);
+  await expect(page.locator(".home-hero__stadium")).toHaveCSS("background-image", /home-hero-stadium-v1\.png/);
 });
 
 test("health endpoint reports the application status", async ({ request }) => {
